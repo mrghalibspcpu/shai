@@ -1,0 +1,185 @@
+name: Build SHAI Android APK
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  data:
+    name: Crawl & commit data index
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: arena/256c7a26-shai
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Build Thaqalayn hadith index
+        env:
+          HADITH_PER_COLLECTION: '40'
+          HADITH_CONCURRENCY: '8'
+        run: node scripts/build-hadith-index.mjs --sample 2
+      - name: Build fatawa index
+        env:
+          FATAWA_MAX_CHAPTERS: '60'
+          FATAWA_CONCURRENCY: '6'
+        run: node scripts/build-fatawa-index.mjs --sample 2
+      - name: Stats
+        run: |
+          node -e '
+            const fs=require("fs");
+            for (const p of ["public/data/thaqalayn/hadith.json","public/data/fatawa/fatawa.json"]) {
+              if (!fs.existsSync(p)) { console.log(p,"MISSING"); continue; }
+              const j=JSON.parse(fs.readFileSync(p,"utf8"));
+              console.log(p,"records:",j.count,"bytes:",fs.statSync(p).size);
+            }'
+      - name: Commit if changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A public/data
+          if git diff --cached --quiet; then
+            echo "::notice::data index unchanged"
+          else
+            git commit -m "chore(data): refresh Thaqalayn + fatawa index [skip ci]"
+            git push origin HEAD:arena/256c7a26-shai
+            echo "::notice::data index committed"
+          fi
+
+  test:
+    name: Self-test (jsdom)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+    needs: test
+    permissions:
+      contents: write   # needed to attach APKs to a release
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      # Capacitor 7 / AGP 8.7 compile with source+target compatibility 21.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Android SDK environment
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          ls "$ANDROID_HOME/platforms" || true
+          ls "$ANDROID_HOME/build-tools" || true
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      - name: Build the offline data index (Thaqalayn + fatawa)
+        run: npm run build:data
+
+      - name: Build web bundle
+        run: npm run build
+
+      - name: Copy web assets into the Android project
+        run: npx cap sync android
+
+      - name: Grant gradlew permission
+        run: chmod +x android/gradlew
+
+      # Mint the shared signing key the first time (it is committed afterwards,
+      # so every later build is signed identically and updates install cleanly).
+      - name: Ensure signing keystore
+        id: keystore
+        run: |
+          mkdir -p android/keystore
+          echo "minted=false" >> "$GITHUB_OUTPUT"
+          if [ ! -f android/keystore/shai-release.jks ]; then
+            echo "::notice::Minting a fresh signing keystore"
+            echo "minted=true" >> "$GITHUB_OUTPUT"
+            keytool -genkeypair -v \
+              -keystore android/keystore/shai-release.jks \
+              -storepass 'shai-android-2026' \
+              -keypass   'shai-android-2026' \
+              -alias shai \
+              -keyalg RSA -keysize 2048 -validity 10950 \
+              -dname "CN=SHAI, OU=SHAI Mobile, O=SHAI, L=Islamabad, ST=Islamabad, C=PK"
+          else
+            echo "::notice::Using committed keystore"
+          fi
+          keytool -list -keystore android/keystore/shai-release.jks \
+            -storepass 'shai-android-2026'
+
+      - name: Assemble APKs
+        id: gradle
+        run: |
+          set +e
+          ./android/gradlew -p android assembleDebug assembleRelease \
+            --no-daemon --console=plain > gradle.log 2>&1
+          code=$?
+          set -e
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          # CI log archives are not always reachable, so mirror the tail of the
+          # Gradle output into job annotations + the step summary.
+          if [ "$code" != "0" ]; then
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            tail -n 250 gradle.log >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            tail -n 60 gradle.log | while IFS= read -r line; do
+              echo "::error title=gradle::$line"
+            done
+          fi
+          exit $code
+
+      - name: Collect APKs
+        run: |
+          mkdir -p build
+          cp "$(find android/app/build/outputs/apk/debug   -name '*.apk' | head -1)" build/SHAI-debug.apk
+          cp "$(find android/app/build/outputs/apk/release -name '*.apk' | head -1)" build/SHAI-release.apk
+          ls -lh build
+          "${ANDROID_HOME}/build-tools/"*/apksigner verify --print-certs build/SHAI-release.apk | head -20
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SHAI-APK
+          path: |
+            build/SHAI-debug.apk
+            build/SHAI-release.apk
+          retention-days: 90
+
+      - name: Upload keystore (first run only)
+        if: steps.keystore.outputs.minted == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: SHAI-keystore
+          path: android/keystore/shai-release.jks
+          retention-days: 90
+
+      # Pushing a tag like v1.0.0 publishes a permanent, login-free download.
+      - name: Attach APKs to release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/SHAI-debug.apk
+            build/SHAI-release.apk

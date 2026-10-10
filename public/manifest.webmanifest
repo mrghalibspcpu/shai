@@ -1,0 +1,34 @@
+{
+  "name": "شیعہ اے آئی — Shia AI",
+  "short_name": "شیعہ اے آئی",
+  "description": "Authentic Urdu answers grounded in Shia Ahadith, Quran, Duas and Fatawa with 1-tap Thaqalayn & sistani.org citations.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#04100D",
+  "theme_color": "#05100D",
+  "lang": "ur",
+  "dir": "rtl",
+  "categories": ["education", "books", "reference"],
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

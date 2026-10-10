@@ -1,0 +1,54 @@
+/* ═══════════════════════════════════════════════════════════
+   SHAI · Typography / @font-face
+   ───────────────────────────────────────────────────────────
+   Jameel Noori Nastaleeq is the signature Urdu face of SHAI.
+   The original TTF in the repo root is ~10.8 MB with 19,658
+   glyphs (Nastaleeq needs ~19k ligature glyphs to shape).
+   `npm run fonts` subsets it to Arabic-script + Latin coverage
+   and compresses it to a ~5.3 MB WOFF2. It is served with
+   `font-display: swap` so the UI paints instantly in the Google
+   Fonts fallback (Noto Nastaliq Urdu) and upgrades in place.
+   ═══════════════════════════════════════════════════════════ */
+
+@font-face {
+  font-family: 'Jameel Noori Nastaleeq';
+  src: url('../assets/fonts/JameelNooriNastaleeq.woff2') format('woff2');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+  /* Only claim the ranges we actually ship — everything else falls through
+     to the next family in the stack instead of rendering .notdef boxes. */
+  unicode-range: U+0000-00FF, U+0100-017F, U+0600-06FF, U+0750-077F, U+08A0-08FF, U+2000-206F,
+    U+20A0-20BF, U+3000-303F, U+FB50-FDFF, U+FE00-FE0F, U+FE70-FEFF;
+}
+
+/* Urdu / Nastaleeq text */
+.urdu {
+  font-family: var(--font-urdu);
+  font-size: var(--urdu-size);
+  line-height: var(--urdu-line);
+  font-feature-settings: 'liga' 1, 'rlig' 1, 'calt' 1, 'kern' 1;
+}
+
+/* Arabic matan — Quran / Hadith */
+.arabic {
+  font-family: var(--font-arabic);
+  direction: rtl;
+  text-align: right;
+  line-height: 2.15;
+  font-size: calc(var(--urdu-size) * 1.14);
+  letter-spacing: 0;
+}
+
+/* Script overrides (Settings → رسم الخط) */
+html[data-script='noto'] {
+  --font-urdu: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', serif;
+}
+html[data-script='naskh'] {
+  --font-urdu: 'Noto Naskh Arabic', 'Amiri', serif;
+  --urdu-line: 1.95;
+}
+html[data-script='system'] {
+  --font-urdu: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --urdu-line: 1.8;
+}

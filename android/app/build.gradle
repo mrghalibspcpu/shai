@@ -1,0 +1,76 @@
+apply plugin: 'com.android.application'
+
+android {
+    namespace "net.shai.app"
+    compileSdk rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "net.shai.app"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "1.0.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    // ── Signing ───────────────────────────────────────────────────────
+    // Every SHAI build shares ONE key (android/keystore/shai-release.jks) so
+    // that installing a newer APK never fails with "App not installed".
+    // Override with the SHAI_KEYSTORE* environment variables for a private key.
+    signingConfigs {
+        release {
+            def ksFile = System.getenv('SHAI_KEYSTORE') ?
+                file(System.getenv('SHAI_KEYSTORE')) : file('keystore/shai-release.jks')
+            if (ksFile.exists()) {
+                storeFile ksFile
+                storePassword System.getenv('SHAI_KEYSTORE_PASSWORD') ?: 'shai-android-2026'
+                keyAlias     System.getenv('SHAI_KEY_ALIAS')          ?: 'shai'
+                keyPassword  System.getenv('SHAI_KEY_PASSWORD')       ?: 'shai-android-2026'
+            } else {
+                logger.warn("No keystore at ${ksFile} — release build will not be signed.")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (signingConfigs.release.storeFile != null) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}
