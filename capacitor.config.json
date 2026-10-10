@@ -1,0 +1,32 @@
+{
+  "appId": "net.shai.app",
+  "appName": "SHAI",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "loggingBehavior": "none",
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false,
+    "buildOptions": {
+      "keystorePath": null,
+      "keystoreAlias": null
+    }
+  },
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#05100D"
+    },
+    "Keyboard": {
+      "resize": "body",
+      "resizeOnFullScreen": true
+    },
+    "Browser": {
+      "presentationStyle": "popover"
+    }
+  }
+}

@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+www/
+build/
+
+# Capacitor / Android generated artefacts
+android/app/build/
+android/build/
+android/.gradle/
+android/local.properties
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/assets/capacitor.plugins.json
+android/app/src/main/res/xml/config.xml
+android/release/
+*.aab
+*.apks
+
+# Signing secrets — NEVER commit
+*.jks
+*.keystore
+keystore.properties
+**/google-services.json
+
+# Logs & OS junk
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Local env
+.env
+.env.local
+.env.*.local
+
+# Temporary font subsetting scratch (the shipped subset lives in public/fonts)
+public/fonts/*.ttf
+
+# jsdom smoke-test scratch
+.smoke/

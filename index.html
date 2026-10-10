@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="ur" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#05100D" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta
+      name="description"
+      content="SHAI — Shia Hadith AI. Authentic, easy and beautiful Urdu answers grounded in Ahadith, Quran and Duas with 1-tap Thaqalayn citations."
+    />
+
+    <title>SHAI — Shia Hadith AI</title>
+
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="./icons/favicon.svg" />
+    <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Scheherazade+New:wght@400;600;700&family=Noto+Nastaliq+Urdu:wght@400..700&family=Inter:wght@400;500;600;700&display=swap"
+    />
+
+  </head>
+  <body>
+    <!-- ══════════════ Splash ══════════════ -->
+    <div id="splash" class="splash">
+      <div class="splash__mark">
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+          <path
+            class="splash__star"
+            d="M50 4l7.6 22.4L80 12.4 69.9 34.5 96 50 69.9 65.5 80 87.6 57.6 73.6 50 96l-7.6-22.4L20 87.6l10.1-22.1L4 50l26.1-15.5L20 12.4l22.4 14z"
+          />
+        </svg>
+      </div>
+      <div class="splash__name">شائی</div>
+      <div class="splash__sub">SHAI · Shia Hadith AI</div>
+    </div>
+
+    <!-- ══════════════ App shell ══════════════ -->
+    <div id="app" class="app" hidden>
+      <!-- Sidebar: conversations -->
+      <aside id="sidebar" class="sidebar" aria-label="گفتگو کی تاریخ">
+        <div class="sidebar__head">
+          <button id="btn-new-chat" class="btn btn--primary btn--block" type="button">
+            <span class="ico">＋</span>
+            <span data-i18n="new_chat">نئی گفتگو</span>
+          </button>
+        </div>
+        <nav id="conv-list" class="conv-list" aria-live="polite"></nav>
+        <div class="sidebar__foot">
+          <button id="btn-sources" class="btn btn--ghost btn--block" type="button">
+            <span class="ico">❖</span>
+            <span>Thaqalayn Sources</span>
+          </button>
+          <button id="btn-settings" class="btn btn--ghost btn--block" type="button">
+            <span class="ico">⚙</span>
+            <span data-i18n="settings">ترتیبات</span>
+          </button>
+          <div class="sidebar__meta">
+            <span id="build-tag">SHAI v1.0.0</span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main column -->
+      <div class="main">
+        <header class="topbar">
+          <button id="btn-menu" class="icon-btn topbar__menu" type="button" aria-label="مینو">☰</button>
+
+          <div class="brand">
+            <div class="brand__logo" aria-hidden="true">
+              <svg viewBox="0 0 100 100">
+                <path
+                  d="M50 4l7.6 22.4L80 12.4 69.9 34.5 96 50 69.9 65.5 80 87.6 57.6 73.6 50 96l-7.6-22.4L20 87.6l10.1-22.1L4 50l26.1-15.5L20 12.4l22.4 14z"
+                />
+              </svg>
+            </div>
+            <div class="brand__text">
+              <h1 class="brand__name">شائی</h1>
+              <p class="brand__tag">Shia Hadith AI</p>
+            </div>
+          </div>
+
+          <div class="topbar__actions">
+            <div id="model-pill" class="pill" title="منتخب ماڈل">
+              <span class="pill__dot"></span>
+              <span id="model-name">gemini-2.5-flash</span>
+            </div>
+            <button id="btn-export" class="icon-btn" type="button" title="گفتگو محفوظ کریں" aria-label="Export">⤓</button>
+            <button id="btn-clear" class="icon-btn" type="button" title="گفتگو صاف کریں" aria-label="Clear">⌫</button>
+          </div>
+        </header>
+
+        <!-- Disclaimer strip -->
+        <div class="notice" id="notice">
+          <span class="notice__ico" aria-hidden="true">⚠</span>
+          <p class="notice__text">
+            ہر جواب
+            <b>Thaqalayn</b>
+            کے حوالوں کے ساتھ دیا جاتا ہے۔ براہِ کرم حوالہ جات خود بھی کھول کر تصدیق کر لیں — یہ ایپ
+            فتویٰ نہیں دیتی۔
+          </p>
+          <button class="notice__x" id="notice-x" type="button" aria-label="بند کریں">✕</button>
+        </div>
+
+        <main id="thread" class="thread" aria-live="polite"></main>
+
+        <footer class="composer" id="composer">
+          <div class="composer__box">
+            <textarea
+              id="input"
+              class="composer__input"
+              rows="1"
+              placeholder="اپنا سوال یہ لکھیں… مثلاً: نمازِ شب کی فضیلت کیا ہے؟"
+              aria-label="سوال لکھیں"
+            ></textarea>
+            <button id="btn-stop" class="composer__btn composer__btn--stop" type="button" hidden aria-label="روکیں">
+              ■
+            </button>
+            <button id="btn-send" class="composer__btn" type="button" aria-label="بھیجیں">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20l18-8L3 4l4 8-4 8z" /></svg>
+            </button>
+          </div>
+          <p class="composer__hint">
+            <span>Enter</span> سے بھیجیں · <span>Shift+Enter</span> نئی لائن ·
+            <b>SHAI</b> صرف مستند متن پر مبنی جواب دیتا ہے
+          </p>
+        </footer>
+      </div>
+
+      <div id="scrim" class="scrim" hidden></div>
+    </div>
+
+    <!-- ══════════════ Onboarding / API key ══════════════ -->
+    <div id="onboarding" class="overlay" hidden>
+      <div class="modal glass" role="dialog" aria-modal="true" aria-labelledby="ob-title">
+        <button class="modal__x" id="ob-skip" type="button" aria-label="بند کریں">✕</button>
+
+        <div class="modal__head">
+          <div class="brand__logo brand__logo--lg" aria-hidden="true">
+            <svg viewBox="0 0 100 100">
+              <path
+                d="M50 4l7.6 22.4L80 12.4 69.9 34.5 96 50 69.9 65.5 80 87.6 57.6 73.6 50 96l-7.6-22.4L20 87.6l10.1-22.1L4 50l26.1-15.5L20 12.4l22.4 14z"
+              />
+            </svg>
+          </div>
+          <h2 id="ob-title" class="modal__title">شائی میں خوش آمدید</h2>
+          <p class="modal__sub">
+            SHAI آپ کی اپنی Google Gemini API key سے چلتا ہے — کلاؤڈ پر کوئی ڈیٹا محفوظ نہیں ہوتا۔
+          </p>
+        </div>
+
+        <ol class="steps">
+          <li class="step" id="step-1">
+            <div class="step__num">1</div>
+            <div class="step__body">
+              <h3 class="step__title">Google AI Studio میں سائن ان کریں</h3>
+              <p class="step__desc">اپنا Google اکاؤنٹ استعمال کر کے AI Studio کھولیں۔</p>
+              <a
+                class="btn btn--soft btn--block"
+                href="https://aistudio.google.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                data-step-link="1"
+              >
+                <span class="ico">↗</span> Sign in to AI Studio
+              </a>
+            </div>
+          </li>
+
+          <li class="step" id="step-2">
+            <div class="step__num">2</div>
+            <div class="step__body">
+              <h3 class="step__title">API Key حاصل کریں</h3>
+              <p class="step__desc">
+                “Get API key” → “Create API key” پر کلک کریں اور Key کو کاپی کر لیں۔
+              </p>
+              <a
+                class="btn btn--soft btn--block"
+                href="https://aistudio.google.com/app/apikey"
+                target="_blank"
+                rel="noopener noreferrer"
+                data-step-link="2"
+              >
+                <span class="ico">🔑</span> Get API Key
+              </a>
+            </div>
+          </li>
+
+          <li class="step" id="step-3">
+            <div class="step__num">3</div>
+            <div class="step__body">
+              <h3 class="step__title">Key پیسٹ کریں</h3>
+              <p class="step__desc">یہ Key صرف اسی ڈیوائس پر محفوظ کی جائے گی۔</p>
+              <div class="field">
+                <input
+                  id="api-key"
+                  class="field__input"
+                  type="password"
+                  inputmode="text"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="AIza…"
+                  dir="ltr"
+                />
+                <button id="btn-eye" class="field__eye" type="button" aria-label="دکھائیں">👁</button>
+              </div>
+              <label class="check">
+                <input type="checkbox" id="ob-remember" checked />
+                <span>اس ڈیوائس پر محفوظ رکھیں</span>
+              </label>
+            </div>
+          </li>
+        </ol>
+
+        <div id="ob-error" class="alert" hidden></div>
+
+        <button id="btn-validate" class="btn btn--primary btn--block btn--lg" type="button">
+          <span id="btn-validate-label">محفوظ کریں اور جاری رکھیں</span>
+          <span id="btn-validate-spin" class="spinner" hidden></span>
+        </button>
+
+        <p class="modal__foot">
+          Key حاصل کرنے میں مدد چاہیے؟
+          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer">
+            یہاں کلک کریں
+          </a>
+        </p>
+      </div>
+    </div>
+
+    <!-- ══════════════ Settings ══════════════ -->
+    <div id="settings" class="overlay" hidden>
+      <div class="modal glass" role="dialog" aria-modal="true" aria-labelledby="st-title">
+        <button class="modal__x" id="st-close" type="button" aria-label="بند کریں">✕</button>
+        <h2 id="st-title" class="modal__title">ترتیبات</h2>
+
+        <div class="setting">
+          <label class="setting__label" for="st-model">ماڈل (Model)</label>
+          <select id="st-model" class="field__input" dir="ltr"></select>
+          <p class="setting__hint">بہتر نتائج کے لیے <code>gemini-2.5-flash</code> تجویز کیا جاتا ہے۔</p>
+        </div>
+
+        <div class="setting">
+          <label class="setting__label" for="st-depth">جواب کی تفصیل</label>
+          <select id="st-depth" class="field__input">
+            <option value="concise">مختصر اور جامع</option>
+            <option value="balanced" selected>متوازن (تجویز کردہ)</option>
+            <option value="detailed">تفصیلی اور علمی</option>
+          </select>
+        </div>
+
+        <div class="setting">
+          <label class="setting__label" for="st-script">رسم الخط</label>
+          <select id="st-script" class="field__input">
+            <option value="nastaleeq" selected>Jameel Noori Nastaleeq</option>
+            <option value="noto">Noto Nastaliq Urdu</option>
+            <option value="naskh">Naskh (سادہ)</option>
+            <option value="system">سسٹم فونٹ</option>
+          </select>
+        </div>
+
+        <div class="setting">
+          <label class="setting__label" for="st-size">فونٹ سائز</label>
+          <input id="st-size" class="range" type="range" min="14" max="28" step="1" value="19" />
+        </div>
+
+        <div class="setting setting--row">
+          <div>
+            <div class="setting__label">عربی متن دکھائیں</div>
+            <p class="setting__hint">حدیث اور آیات کا اصل عربی متن</p>
+          </div>
+          <label class="switch"><input type="checkbox" id="st-arabic" checked /><span></span></label>
+        </div>
+
+        <div class="setting setting--row">
+          <div>
+            <div class="setting__label">صرف معتبر (Muʿtabar) احادیث</div>
+            <p class="setting__hint">صرف صحیح / حسن درجہ کی روایات</p>
+          </div>
+          <label class="switch"><input type="checkbox" id="st-strict" checked /><span></span></label>
+        </div>
+
+        <div class="setting">
+          <label class="setting__label" for="st-key">Gemini API Key</label>
+          <div class="field">
+            <input id="st-key" class="field__input" type="password" autocomplete="off" spellcheck="false" dir="ltr" />
+            <button id="st-eye" class="field__eye" type="button" aria-label="دکھائیں">👁</button>
+          </div>
+          <div class="setting__row">
+            <button id="st-save-key" class="btn btn--soft" type="button">محفوظ کریں</button>
+            <button id="st-test-key" class="btn btn--ghost" type="button">جانچیں</button>
+            <button id="st-remove-key" class="btn btn--danger" type="button">حذف کریں</button>
+          </div>
+          <div id="st-status" class="alert" hidden></div>
+        </div>
+
+        <div class="setting">
+          <div class="setting__label">ڈیٹا</div>
+          <div class="setting__row">
+            <button id="st-export" class="btn btn--soft" type="button">سب کچھ ڈاؤن لوڈ</button>
+            <button id="st-wipe" class="btn btn--danger" type="button">سب ڈیٹا مٹائیں</button>
+          </div>
+        </div>
+
+        <p class="modal__foot">
+          SHAI v1.0.0 · ماخذ:
+          <a href="https://thaqalayn.com" target="_blank" rel="noopener noreferrer">Thaqalayn</a>
+        </p>
+      </div>
+    </div>
+
+    <!-- ══════════════ Sources drawer ══════════════ -->
+    <div id="sources" class="overlay overlay--right" hidden>
+      <div class="drawer glass" role="dialog" aria-modal="true" aria-labelledby="sr-title">
+        <div class="drawer__head">
+          <h2 id="sr-title" class="modal__title">مصادر · Thaqalayn</h2>
+          <button class="modal__x" id="sr-close" type="button" aria-label="بند کریں">✕</button>
+        </div>
+        <p class="drawer__sub">
+          SHAI انہی مجموعوں سے حوالہ دیتا ہے۔ کسی بھی کتاب پر ٹیپ کر کے Thaqalayn پر کھولیں۔
+        </p>
+        <div id="sr-list" class="sr-list"></div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast" hidden></div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
