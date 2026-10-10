@@ -25,6 +25,8 @@ jobs:
     name: Build APK
     runs-on: ubuntu-latest
     needs: test
+    permissions:
+      contents: write   # needed to attach APKs to a release
     steps:
       - uses: actions/checkout@v4
 
