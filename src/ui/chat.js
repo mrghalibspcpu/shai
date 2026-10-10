@@ -3,7 +3,7 @@
  */
 
 import { renderMarkdown, toPlainText } from '../lib/markdown.js';
-import { extract, renderRefs } from '../lib/citations.js';
+import { extract, renderRefs, setCitationContext } from '../lib/citations.js';
 import { LOGO_SVG, qs, toast } from '../lib/dom.js';
 
 const SUGGESTIONS = [
@@ -218,12 +218,16 @@ export function showError(inner, { title, hint, onRetry, onChangeKey }) {
 export function renderHistory(inner, messages) {
   messages.forEach((m, i) => {
     const id = `h${i}-${m.ts || i}`;
+    // Each saved answer carries the sources it was grounded on; restore them
+    // so its citations resolve the same way they did live.
+    setCitationContext(m.sources?.length ? new Map(m.sources) : null);
     const { msg } = addMessage(inner, { role: m.role, content: m.content, id });
     msg.dataset.raw = m.content;
     if (m.role === 'assistant') {
       msg.dataset.refs = JSON.stringify(extract(m.content).refs);
     }
   });
+  setCitationContext(null);
   scrollToBottom();
 }
 

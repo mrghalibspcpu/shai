@@ -179,15 +179,15 @@ const { buildSystemInstruction } = await import('../src/lib/prompt.js');
 const sys = buildSystemInstruction({ depth: 'balanced', showArabic: true, strictGrading: true });
 ok('persona present', sys.includes('SHAI'));
 ok('urdu output enforced', sys.includes('اردو'));
-ok('anti-hallucination rule present', sys.includes('Zero Hallucination'));
+ok('grounded-only rule present', sys.includes('صرف دیے گئے ماخذ'));
 ok('refs contract present', sys.includes('```refs'));
-ok('catalogue embedded', sys.includes('Al-Kāfi') && sys.includes('45 ='));
-ok('catalogue has every valid id', S.VALID_IDS.every((id) => sys.includes(`${id} =`)));
+ok('model is told not to write URLs', sys.includes('URL'));
+ok('model is told to cite only given ids', sys.includes('صرف انہی ماخذ کا'));
 ok('depth respected', buildSystemInstruction({ depth: 'detailed' }).includes('تفصیلی'));
 const noAr = buildSystemInstruction({ showArabic: false });
-ok('arabic can be disabled', noAr.includes('عربی متن شامل نہ کریں'));
+ok('model never writes arabic (grounded)', noAr.includes('عربی متن نہ لکھیں'));
 ok('disabled prompt drops ```ar contract', !noAr.includes('```ar'));
-ok('enabled prompt keeps ```ar contract', sys.includes('```ar'));
+ok('no ```ar contract (matn comes from source)', !sys.includes('```ar'));
 ok('no unresolved template holes', !/\$\{(?!msgId)/.test(sys) || !sys.includes('${'));
 
 /* ── 6 · Gemini client ───────────────────────────────────────── */

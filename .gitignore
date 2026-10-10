@@ -44,3 +44,6 @@ public/fonts/*.ttf
 
 # jsdom smoke-test scratch
 .smoke/
+
+# Generated on-device library shards (built from thaqalayn-hadith-data; ~70 MB)
+public/data/library/

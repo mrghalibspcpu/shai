@@ -43,9 +43,70 @@ const esc = (s) =>
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
+/* ── Library ids (grounded mode) ─────────────────────────────
+ * In grounded mode the model may cite ONLY the ids of the sources retrieved
+ * for that turn ([S1], [S2] …). `setCitationContext` receives that map. Any
+ * other id is rejected and shown as not-in-sources; the URL and Arabic text
+ * always come from the source record, never from the model. */
+
+let contextMap = null;
+
+/** @param {Map<string, object>|null} map  id → view (see library.js viewOf) */
+export function setCitationContext(map) {
+  contextMap = map instanceof Map ? map : null;
+}
+
+const LIB_ID = /^[a-z][a-z0-9-]*:\d+(?::\d+)*$/i;
+
+function normaliseLibraryRef(id, raw, index) {
+  const n = Number(raw.n ?? index + 1) || index + 1;
+  const rec = contextMap?.get(id);
+  if (!rec) {
+    return {
+      kind: 'library',
+      n,
+      id,
+      valid: false,
+      allowed: false,
+      status: 'rejected',
+      url: null,
+      title: id,
+      titleUr: id,
+      tag: '',
+      arabic: '',
+      english: '',
+      chapterTitle: '',
+      grading: null,
+      grader: '',
+      note: '',
+    };
+  }
+  return {
+    kind: 'library',
+    n,
+    id,
+    valid: rec.verified === true,
+    allowed: true,
+    status: rec.status,
+    url: rec.url || null,
+    title: rec.citation || id,
+    titleUr: rec.citation || id,
+    tag: rec.tag || '',
+    arabic: rec.arabic || '',
+    english: rec.english || '',
+    chapterTitle: '',
+    grading: null,
+    grader: '',
+    note: raw.note && typeof raw.note === 'string' ? raw.note : '',
+  };
+}
+
 /** Coerce a single raw ref object into a normalised citation record. */
 export function normaliseRef(raw, index = 0) {
   if (!raw || typeof raw !== 'object') return null;
+
+  const libId = typeof raw.id === 'string' ? raw.id.trim() : '';
+  if (LIB_ID.test(libId)) return normaliseLibraryRef(libId, raw, index);
   const src = {
     path: raw.path || raw.id || raw.ref || '',
     collection: raw.collection ?? raw.c ?? raw.book_id,
@@ -200,6 +261,20 @@ export function extract(raw) {
   return { body: body.replace(/\n{3,}/g, '\n\n').trimEnd(), refs, streaming };
 }
 
+function libraryBadge(r) {
+  if (!r.allowed) {
+    return '<span class="tag tag--warn" title="یہ حوالہ اس سوال کے لیے دیے گئے ماخذوں میں نہیں تھا">ماخذ میں موجود نہیں — مسترد</span>';
+  }
+  if (r.status === 'verified') {
+    return '<span class="tag tag--sahih" title="لنک کی live صفحے پر تصدیق ہو چکی ہے">verified link</span>';
+  }
+  if (r.status === 'no-url') {
+    return '<span class="tag tag--warn" title="اس ماخذ کا کوئی online لنک دستیاب نہیں">no online link</span>';
+  }
+  const why = r.status === 'mismatch' ? 'لنک پر متن مختلف ملا' : 'لنک ابھی خودکار طور پر تصدیق نہیں ہوا';
+  return `<span class="tag tag--warn" title="${esc(why)}">${r.status === 'mismatch' ? 'mismatch' : 'not yet verified'}</span>`;
+}
+
 /** Render the Reference (Hawalajat) section. */
 export function renderRefs(refs, messageId = '') {
   if (!refs?.length) return '';
@@ -207,9 +282,12 @@ export function renderRefs(refs, messageId = '') {
   const items = refs
     .map((r) => {
       const id = `${messageId}-ref-${r.n}`;
-      const badge = r.valid
-        ? '<span class="tag tag--sahih">verified id</span>'
-        : '<span class="tag tag--warn" title="اس حوالے کی شناخت خودکار طور پر تصدیق نہیں ہو سکی">unverified</span>';
+      const badge =
+        r.kind === 'library'
+          ? libraryBadge(r)
+          : r.valid
+          ? '<span class="tag tag--sahih">verified id</span>'
+          : '<span class="tag tag--warn" title="اس حوالے کی شناخت خودکار طور پر تصدیق نہیں ہو سکی">unverified</span>';
 
       const gradeTag = r.grading
         ? `<span class="tag tag--${r.grading.cls || 'warn'}">${esc(r.grading.label)}</span>`
@@ -223,7 +301,11 @@ export function renderRefs(refs, messageId = '') {
           : '<span class="tag">Reference</span>';
 
       let links = '';
-      if (r.kind === 'hadith') {
+      if (r.kind === 'library') {
+        links = r.url
+          ? `<a class="ref__link" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">↗ ماخذ کا صفحہ (live)</a>`
+          : '';
+      } else if (r.kind === 'hadith') {
         links = `
           <a class="ref__link" href="${r.path.url}" target="_blank" rel="noopener noreferrer">↗ Hadith on Thaqalayn</a>
           <a class="ref__link ref__link--ghost" href="${r.path.chapterLink}" target="_blank" rel="noopener noreferrer">Chapter</a>
@@ -236,8 +318,16 @@ export function renderRefs(refs, messageId = '') {
       const author = r.author ? `<span class="tag">${esc(r.author)}</span>` : '';
       const chapter = r.chapterTitle ? `<div class="ref__note">${esc(r.chapterTitle)}</div>` : '';
       const note = r.note ? `<div class="ref__note">${esc(r.note)}</div>` : '';
+      const srcText =
+        r.kind === 'library' && r.allowed
+          ? `${r.arabic ? `<div class="ref__ar" dir="rtl" lang="ar">${esc(r.arabic)}</div>` : ''}${
+              r.english ? `<div class="ref__note" dir="ltr">${esc(r.english)}</div>` : ''
+            }`
+          : '';
       const path =
-        r.kind === 'hadith'
+        r.kind === 'library'
+          ? `<div class="ref__path">${esc(r.id)}${r.tag ? ` · ${esc(r.tag)}` : ''}</div>`
+          : r.kind === 'hadith'
           ? `<div class="ref__path">thaqalayn:${esc(r.path.path)}</div>`
           : r.kind === 'quran'
           ? `<div class="ref__path">quran:${r.surah}/${r.verse ?? ''}</div>`
@@ -253,6 +343,7 @@ export function renderRefs(refs, messageId = '') {
             ${r.grader ? `<span class="tag">${esc(r.grader)}</span>` : ''}
           </div>
           ${chapter}
+          ${srcText}
           ${note}
           <div class="ref__acts">${links}</div>
           ${path}

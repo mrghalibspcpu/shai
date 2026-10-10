@@ -1783,3 +1783,13 @@ textarea {
   -webkit-user-select: text;
   user-select: text;
 }
+
+/* Grounded citations: source Arabic + English shown straight from the record */
+.ref__ar {
+  font-family: 'Amiri', 'Scheherazade New', serif;
+  font-size: 1.1rem;
+  line-height: 2;
+  margin: 0.4rem 0;
+  color: inherit;
+  white-space: pre-wrap;
+}

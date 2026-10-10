@@ -6,7 +6,8 @@ import './styles/main.css';
 
 import { buildSystemInstruction } from './lib/prompt.js';
 import { streamGenerate, friendlyError, normaliseKey } from './lib/gemini.js';
-import { extract } from './lib/citations.js';
+import { extract, setCitationContext } from './lib/citations.js';
+import { prepareTurn } from './lib/grounded.js';
 import { qs, qsa, on, toast, sleep, openExternal } from './lib/dom.js';
 import {
   getSettings,
@@ -208,12 +209,8 @@ function historyFor(conv) {
 
 async function run(question, { retryFrom = null } = {}) {
   if (state.busy) return;
+  // No key is fine: the turn falls back to retrieval-only (see grounded.js).
   const key = normaliseKey(await getApiKey());
-  if (!key) {
-    toast('پہلے اپنی Gemini API key درج کریں');
-    onboarding?.open();
-    return;
-  }
 
   const thread = qs('#thread');
   const inner = ensureInner(thread);
@@ -249,15 +246,29 @@ async function run(question, { retryFrom = null } = {}) {
   let raw = '';
   let aiEl = null;
 
+  let turn = null;
   try {
-    const stream = streamGenerate({
+    turn = await prepareTurn(question, {
       apiKey: key,
       model: state.settings.model,
-      system: buildSystemInstruction(state.settings),
-      history,
-      message: question,
       signal: state.controller.signal,
     });
+    // Only the sources retrieved for this turn may be cited (see citations.js).
+    setCitationContext(turn.contextMap);
+
+    const stream =
+      turn.mode === 'local'
+        ? (async function* localReply() {
+            yield turn.body;
+          })()
+        : streamGenerate({
+            apiKey: key,
+            model: state.settings.model,
+            system: buildSystemInstruction(state.settings),
+            history,
+            message: turn.message,
+            signal: state.controller.signal,
+          });
 
     let first = true;
     for await (const chunk of stream) {
@@ -276,7 +287,9 @@ async function run(question, { retryFrom = null } = {}) {
   } catch (err) {
     thinking.remove();
     if (aiEl) removeMessage(aiEl);
-    const info = friendlyError(err);
+    const info = String(err?.message || '').startsWith('library:')
+      ? { title: 'ڈیٹا لوڈ نہیں ہوا', hint: 'لائبریری کی فائلیں نہیں ملیں۔ npm run build:library چلائیں۔' }
+      : friendlyError(err);
     showError(inner, {
       title: info.title,
       hint: info.hint,
@@ -304,7 +317,7 @@ async function run(question, { retryFrom = null } = {}) {
       onRetry: () => run(question, { retryFrom: aiEl.dataset.ts }),
     });
     const refs = extract(raw).refs;
-    conv.messages.push({ role: 'assistant', content: raw, ts: Date.now(), refs });
+    conv.messages.push({ role: 'assistant', content: raw, ts: Date.now(), refs, sources: turn?.sources || [] });
     await persist();
   }
 
