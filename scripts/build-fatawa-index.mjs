@@ -93,16 +93,34 @@ function chapterLinks(html, bookId) {
   return [...out.entries()].map(([id, url]) => ({ id: Number(id), url }));
 }
 
+const SITE_TAIL =
+  /\s*[-|–—]\s*(Islamic Laws|A Code of Practice[^-|–—]*)\s*([-|–—]\s*)?(The Official Website.*)?$/i;
+
 function pageTitle(html) {
-  const m = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i) || html.match(/<h2[^>]*>([\s\S]*?)<\/h2>/i) || html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-  return m ? stripTags(m[1]).replace(/\s*[-|–—]\s*The Official Website.*$/i, '').trim() : '';
+  const region = mainHtml(html);
+  const m =
+    region.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i) ||
+    region.match(/<h2[^>]*>([\s\S]*?)<\/h2>/i) ||
+    region.match(/<h3[^>]*>([\s\S]*?)<\/h3>/i);
+  let t = m ? stripTags(m[1]) : '';
+  if (!t) {
+    const tm = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+    t = tm ? stripTags(tm[1]) : '';
+  }
+  t = t.replace(SITE_TAIL, '').trim();
+  t = t.replace(/\s*[-|–—]\s*The Official Website.*$/i, '').trim();
+  if (/^The Official Website/i.test(t) || /^Books$/i.test(t)) t = '';
+  return t.slice(0, 120);
 }
+
+const FATWA_BOILERPLATE =
+  /the official website of the office|a code of practice for mus|read more|download file|search in:|^books$/i;
 
 /**
  * Split chapter HTML into rulings. "Islamic Laws" numbers them "Ruling 123.",
  * the Code of Practice uses plain numbered paragraphs.
  */
-function extractRulings(html, { url, bookId, chapterTitle }) {
+function extractRulings(html, { url, bookId, chapterTitle, itemId }) {
   const region = mainHtml(html);
   const text = decode(
     region
@@ -127,6 +145,7 @@ function extractRulings(html, { url, bookId, chapterTitle }) {
 
   for (const line of lines) {
     if (/^(introduction|foreword|translator|editor|preface|appendix|glossary|works consulted)/i.test(line)) continue;
+    if (FATWA_BOILERPLATE.test(line)) continue;
     const rm = line.match(/^Ruling\s+(\d+)\s*[.*]?\s*(.*)$/i);
     const nm = line.match(/^(\d{1,4})\s*[.)]\s+(.{40,})$/);
     if (rm) {
@@ -139,6 +158,7 @@ function extractRulings(html, { url, bookId, chapterTitle }) {
       flush();
       current = { no: null, text: line, kind: 'qa' };
     } else if (current) {
+      if (FATWA_BOILERPLATE.test(line)) continue;
       current.text += ` ${line}`;
     } else if (line.length > 90) {
       current = { no: null, text: line, kind: 'note' };
@@ -147,10 +167,10 @@ function extractRulings(html, { url, bookId, chapterTitle }) {
   flush();
 
   return out
-    .filter((r) => r.text.length > 60)
+    .filter((r) => r.text.length > 60 && !FATWA_BOILERPLATE.test(r.text.slice(0, 120)))
     .slice(0, 120)
     .map((r, i) => ({
-      id: `sistani-${bookId}-${chapterTitle ? chapterTitle.slice(0, 18) : 'c'}-${r.no ?? i}`,
+      id: `sistani-${bookId}-${itemId}-${r.no ?? i}`,
       marja: 'Sayyid Ali al-Sistani',
       marjaFull: BOOK_META[bookId]?.marja || 'Sayyid Ali al-Sistani',
       book: BOOK_META[bookId]?.title || `Book ${bookId}`,
@@ -187,7 +207,7 @@ async function main() {
         const html = await get(item.url);
         if (html) {
           const title = pageTitle(html);
-          const recs = extractRulings(html, { url: item.url, bookId, chapterTitle: title });
+          const recs = extractRulings(html, { url: item.url, bookId, chapterTitle: title, itemId: item.id });
           all.push(...recs);
         }
         done += 1;

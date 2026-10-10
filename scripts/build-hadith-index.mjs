@@ -2,19 +2,20 @@
 /**
  * SHIA AI · Thaqalayn hadith index builder
  * ─────────────────────────────────────────────────────────────
- * Crawls thaqalayn.com (which is what thaqalyn.net resolves to), pulls every
- * hadith page for the configured collections, and writes a compact JSON index
- * that the app ships and searches **offline, on-device**.
+ * Crawls thaqalayn.com (the domain thaqalyn.net resolves to), pulls the hadith
+ * pages for the configured collections, and writes a compact JSON index that
+ * the app ships and searches **offline, on-device**.
  *
- * This index is the single source of truth for the zero-hallucination engine:
- * the model is only ever shown records that really exist here.
+ * This index is the only source of truth for the zero-hallucination engine:
+ * the model is only ever shown records that really exist here, so it cannot
+ * invent a matan, a book, a chapter or a URL.
  *
  *   node scripts/build-hadith-index.mjs [--sample 3]
  *
  * Env:
- *   HADITH_COLLECTIONS   csv of collection ids  (default: major collections)
- *   HADITH_PER_COLLECTION  max hadiths per collection (default 60)
- *   HADITH_CONCURRENCY   parallel fetches (default 6)
+ *   HADITH_COLLECTIONS    csv of collection ids
+ *   HADITH_PER_COLLECTION max hadiths per collection
+ *   HADITH_CONCURRENCY    parallel fetches
  */
 
 import { writeFileSync, mkdirSync } from 'node:fs';
@@ -26,6 +27,10 @@ const OUT_DIR = join(ROOT, 'public/data/thaqalayn');
 
 const BASE = 'https://thaqalayn.com';
 const UA = 'SHIA-AI-IndexBuilder/1.0 (+https://github.com/mrghalibspcpu/shai)';
+const IN_CI = process.env.GITHUB_ACTIONS === 'true';
+
+/** Visible in `gh run view` even when the log archive is unreachable. */
+const note = (msg) => console.log(IN_CI ? `::notice title=hadith-index::${msg}` : msg);
 
 const COLLECTIONS = (process.env.HADITH_COLLECTIONS || '1,2,9,10,14,23,24,29,32,39')
   .split(',')
@@ -35,7 +40,7 @@ const PER_COLLECTION = Number(process.env.HADITH_PER_COLLECTION || 60);
 const CONCURRENCY = Number(process.env.HADITH_CONCURRENCY || 6);
 const SAMPLE = Number(process.argv.includes('--sample') ? process.argv[process.argv.indexOf('--sample') + 1] : 0);
 
-/* ── helpers ─────────────────────────────────────────────────── */
+/* ── fetch ───────────────────────────────────────────────────── */
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -56,26 +61,27 @@ async function get(url, tries = 3) {
   return null;
 }
 
-const ENT = {
-  amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', ndash: '–', mdash: '—',
-  rsquo: '’', lsquo: '‘', ldquo: '“', rdquo: '”', hellip: '…',
-};
+/* ── text cleanup ────────────────────────────────────────────── */
 
-function decode(s) {
-  return String(s || '')
+const ENT = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', ndash: '–', mdash: '—', rsquo: '’', lsquo: '‘', ldquo: '“', rdquo: '”', hellip: '…' };
+
+const decode = (s) =>
+  String(s || '')
     .replace(/&#x([0-9a-f]+);/gi, (_m, h) => String.fromCodePoint(parseInt(h, 16)))
     .replace(/&#(\d+);/g, (_m, d) => String.fromCodePoint(Number(d)))
     .replace(/&([a-z]+);/gi, (m, n) => ENT[n.toLowerCase()] ?? m);
-}
+
+/** Drop private-use glyphs (Thaqalayn renders ﷺ / (a.s) through the PUA). */
+const stripPua = (s) => String(s || '').replace(/[-]/g, ' ');
 
 function htmlToText(html) {
   let h = String(html || '');
   h = h.replace(/<script[\s\S]*?<\/script>/gi, ' ');
   h = h.replace(/<style[\s\S]*?<\/style>/gi, ' ');
   h = h.replace(/<br\s*\/?>/gi, '\n');
-  h = h.replace(/<\/(p|div|h1|h2|h3|h4|li|tr)>/gi, '\n');
+  h = h.replace(/<\/(p|div|h1|h2|h3|h4|h5|li|tr|section|article)>/gi, '\n');
   h = h.replace(/<[^>]+>/g, ' ');
-  return decode(h)
+  return stripPua(decode(h))
     .replace(/[ \t\u00a0]+/g, ' ')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
@@ -83,12 +89,16 @@ function htmlToText(html) {
 
 const AR = /[؀-ۿ]/;
 const ratio = (s, re) => {
-  const letters = s.replace(/[\s\d]/g, '');
+  const letters = String(s || '').replace(/[\s\d]/g, '');
   if (!letters.length) return 0;
   return (letters.match(new RegExp(re.source, 'g')) || []).length / letters.length;
 };
 
-/* ── JSON-LD extraction ──────────────────────────────────────── */
+/** Site chrome that must never be mistaken for hadith content. */
+const BOILERPLATE =
+  /read shia hadith|get the app for ios|cookie preferences|privacy policy|support us|customize cookies|save preferences|thaqalayn, now on mobile|everything on the web|app store|google play|new\s*new/i;
+
+/* ── JSON-LD ─────────────────────────────────────────────────── */
 
 function jsonLdBlocks(html) {
   const out = [];
@@ -96,7 +106,7 @@ function jsonLdBlocks(html) {
     try {
       out.push(JSON.parse(m[1].trim()));
     } catch (_) {
-      /* ignore malformed */
+      /* malformed */
     }
   }
   return out;
@@ -114,21 +124,59 @@ function deepFind(node, pred, seen = new Set()) {
 }
 
 const GRADES = [
-  [/sahih|صحيح|صحیح/i, 'Sahih'],
   [/mutabar|mu(ʾ|')?tabar|معتبر/i, 'Mutabar'],
+  [/sahih|صحيح|صحیح/i, 'Sahih'],
   [/hasan|حسن/i, 'Hasan'],
   [/muwath?thaq|موثق/i, 'Muwaththaq'],
-  [/qawi(yy)?|قوي/i, 'Qawi'],
-  [/da(ʾ|')?if|ضعيف|ضعیف/i, 'Daif'],
+  [/qawi(yy)?|قوي|قوی/i, 'Qawi'],
   [/mursal|مرسل/i, 'Mursal'],
+  [/da(ʾ|')?if|ضعيف|ضعیف|majhul|مجهول/i, 'Daif'],
 ];
 
-function parseGrade(text) {
-  for (const [re, label] of GRADES) if (re.test(text)) return label;
+const parseGrade = (text) => {
+  for (const [re, label] of GRADES) if (re.test(String(text || ''))) return label;
   return '';
+};
+
+/* ── page parser ─────────────────────────────────────────────── */
+
+function headings(html) {
+  const out = [];
+  for (const m of html.matchAll(/<(h[1-4])[^>]*>([\s\S]*?)<\/\1>/gi)) {
+    const t = stripPua(decode(String(m[2]).replace(/<[^>]+>/g, ' ')))
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (t) out.push({ tag: m[1].toLowerCase(), text: t, at: m.index });
+  }
+  return out;
 }
 
-/* ── hadith page parser ──────────────────────────────────────── */
+const COLLECTION_NAMES =
+  /^(al[- ]kāfi|al[- ]kafi|kitāb|muʿjam|nahj|man lā|kāmil|kamāl|thawāb|al[- ]khiṣāl|ʿuyūn|al[- ]tawḥīd|al[- ]amālī|faḍā|ṣifāt|risālat|tahdhīb|al[- ]imāma|hadith|chapter|book)\b/i;
+
+function pickChapterTitle(html, text) {
+  // The chapter title is the heading that sits immediately before the
+  // breadcrumb line   {Collection}|Volume N|Book N|Chapter N
+  const crumbAt = text.search(/Volume\s*\d+/i);
+  const hs = headings(html);
+  if (crumbAt !== -1 && hs.length) {
+    const before = hs.filter((h) => h.at < crumbAt);
+    if (before.length) {
+      const last = before[before.length - 1].text;
+      if (last.length > 3 && !/^Hadith\s*#?\d+$/i.test(last)) return last;
+    }
+  }
+  // Otherwise: first heading that is neither the collection name nor a nav item
+  for (const h of hs) {
+    const t = h.text;
+    if (t.length < 8) continue;
+    if (COLLECTION_NAMES.test(t)) continue;
+    if (/^Hadith\s*#?\d+$/i.test(t)) continue;
+    if (/the comprehensive shia library|support/i.test(t)) continue;
+    return t;
+  }
+  return '';
+}
 
 function parsePage(html, url) {
   const parts = url.match(/\/hadith\/(\d+)\/(\d+)\/(\d+)\/(\d+)/);
@@ -136,58 +184,56 @@ function parsePage(html, url) {
   const [, c, b, ch, h] = parts.map(Number);
 
   const text = htmlToText(html);
-  const blocks = jsonLdBlocks(html);
 
-  let name = '';
+  // ── JSON-LD (grading + grader + canonical reference)
   let canonical = '';
   let citation = [];
   let about = [];
-
-  for (const block of blocks) {
-    const node = deepFind(block, (n) => n && !Array.isArray(n) && Array.isArray(n.identifier) && n.identifier.some((x) => String(x).includes('thaqalayn:hadith')));
-    if (node) {
-      name = typeof node.name === 'string' ? node.name : '';
-      canonical = (node.identifier || []).find((x) => /,/.test(String(x))) || '';
-      citation = Array.isArray(node.citation) ? node.citation.filter((x) => typeof x === 'string') : [];
-      about = Array.isArray(node.about) ? node.about : [];
-      const ap = Array.isArray(node.additionalProperty) ? node.additionalProperty : [];
-      for (const p of ap) if (p?.name === 'Grading' && p?.value) citation.push(String(p.value));
-      break;
+  let jsonld = false;
+  for (const block of jsonLdBlocks(html)) {
+    const node = deepFind(
+      block,
+      (n) => n && !Array.isArray(n) && Array.isArray(n.identifier) && n.identifier.some((x) => String(x).includes('thaqalayn:hadith'))
+    );
+    if (!node) continue;
+    jsonld = true;
+    canonical = (node.identifier || []).find((x) => /,/.test(String(x))) || '';
+    citation = Array.isArray(node.citation) ? node.citation.filter((x) => typeof x === 'string') : [];
+    about = Array.isArray(node.about) ? node.about : [];
+    for (const p of Array.isArray(node.additionalProperty) ? node.additionalProperty : []) {
+      if (p?.name === 'Grading' && p?.value) citation.push(String(p.value));
+      if (p?.name === 'Canonical reference' && p?.value) canonical = canonical || String(p.value);
     }
+    break;
   }
 
-  // ── chapter title: from JSON-LD name, else the first heading, else the h1/h2
-  let chapterTitle = name.replace(/\s*[-–—|].*$/, '').trim();
-  if (!chapterTitle) {
-    const h = html.match(/<h2[^>]*>([\s\S]*?)<\/h2>/i) || html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
-    if (h) chapterTitle = decode(h[1].replace(/<[^>]+>/g, ' ')).trim();
-  }
-  chapterTitle = chapterTitle.replace(/^\s*Hadith\s*#?\d+.*$/i, '').trim();
+  const chapterTitle = pickChapterTitle(html, text);
 
-  // ── body lines
+  // ── volume from the breadcrumb
+  const volMatch = text.match(/Volume\s*(\d+)/i);
+  const volume = volMatch ? Number(volMatch[1]) : null;
+
   const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
 
-  let arabic = '';
+  // ── Arabic matan = longest predominantly-Arabic line
+  const arLines = lines.filter((l) => l.length > 12 && ratio(l, AR) > 0.5 && !BOILERPLATE.test(l));
+  const arabic = arLines.length ? arLines.sort((x, y) => y.length - x.length)[0] : '';
+
+  // ── English translation: the numbered "[x/y] Source: …" line
   let english = '';
-
-  // Arabic matan = longest line that is predominantly Arabic script
-  const arLines = lines.filter((l) => l.length > 12 && ratio(l, AR) > 0.55);
-  if (arLines.length) arabic = arLines.sort((a, b) => b.length - a.length)[0];
-
-  // English translation = the numbered line ("3. [3/3] Usul al-Kafi: …")
-  const numRe = new RegExp(`^${h}\\s*[.\\u06D4]\\s+(.+)$`);
+  const numRe = new RegExp(`^${h}\\s*[.\\u06D4]\\s+(\\[[^\\]]*\\]\\s*)?(.{40,})$`);
   for (const l of lines) {
     const m = l.match(numRe);
-    if (m && m[1].length > 40 && ratio(m[1], /[A-Za-z]/) > 0.4) {
-      english = m[1];
+    if (m && ratio(m[2], /[A-Za-z]/) > 0.45 && !BOILERPLATE.test(l)) {
+      english = m[2];
       break;
     }
   }
   if (!english) {
     const candidates = lines.filter(
-      (l) => l.length > 80 && ratio(l, /[A-Za-z]/) > 0.62 && !/cookie|privacy|support|app store|google play/i.test(l)
+      (l) => l.length > 90 && ratio(l, /[A-Za-z]/) > 0.62 && !BOILERPLATE.test(l) && !/\|Volume\s*\d+/i.test(l)
     );
-    if (candidates.length) english = candidates.sort((a, b) => b.length - a.length)[0];
+    if (candidates.length) english = candidates.sort((x, y) => y.length - x.length)[0];
   }
 
   // ── grading
@@ -196,31 +242,26 @@ function parsePage(html, url) {
   if (!grade) {
     const chip = html.match(/>(صحيح|صحیح|حسن|معتبر|موثق|ضعيف|ضعیف|مرسل|قوي)<\/[^>]+>/i);
     if (chip) grade = parseGrade(chip[1]);
-    else {
-      const near = lines.filter((l) => /grade|grader|reference|معتبر|صحيح/i.test(l)).join(' ');
-      grade = parseGrade(near);
-    }
+    else grade = parseGrade(lines.filter((l) => /grade|grader|معتبر|صحيح|ضعيف/i.test(l)).join(' '));
   }
-
-  // ── grader
-  const graderMatch = gradeSource.match(/grader:\s*([^;|]+)/i) || gradeSource.match(/reference:\s*([^;|]+);\s*grader/i);
+  const graderMatch = gradeSource.match(/grader:\s*([^;|]+)/i);
   const grader = (graderMatch ? graderMatch[1] : '').trim();
 
   if (!arabic && !english) return null;
 
-  // tidy the "[3/3]" style source tag that Thaqalayn prefixes
-  const clean = (s) =>
-    s.replace(/^\[[^\]]*\]\s*/, '').replace(/\s{2,}/g, ' ').trim();
+  const clean = (s) => s.replace(/^\[[^\]]*\]\s*/, '').replace(/^[\d]+\s*[.]\s*/, '').replace(/\s{2,}/g, ' ').trim();
 
   return {
     id: `${c}/${b}/${ch}/${h}`,
     c, b, ch, h,
+    volume,
     chapterTitle,
-    ar: clean(arabic).slice(0, 1400),
+    ar: clean(arabic).slice(0, 1500),
     en: clean(english).slice(0, 2400),
     grade,
     grader,
     canonical,
+    jsonld,
     url,
   };
 }
@@ -228,36 +269,43 @@ function parsePage(html, url) {
 /* ── main ────────────────────────────────────────────────────── */
 
 async function main() {
-  console.log(`[hadith] collections: ${COLLECTIONS.join(', ')} · ≤${PER_COLLECTION} each`);
+  note(`collections ${COLLECTIONS.join(',')} · max ${PER_COLLECTION}/collection`);
 
   const idxXml = await get(`${BASE}/sitemap-index.xml`);
   if (!idxXml) throw new Error('could not read sitemap-index.xml');
   const maps = [...idxXml.matchAll(/<loc>([^<]+)<\/loc>/g)]
     .map((m) => m[1].trim())
     .filter((u) => /\/sitemap\/hadith-\d+\.xml/.test(u));
-  console.log(`[hadith] sitemaps: ${maps.length}`);
+  note(`sitemaps: ${maps.length}`);
 
-  const wanted = new Map(); // collection -> urls
+  const wanted = new Map();
+  const seenUrl = new Set();
   for (const map of maps) {
     const xml = await get(map);
     if (!xml) continue;
     for (const m of xml.matchAll(/<loc>([^<]+)<\/loc>/g)) {
       const u = m[1].trim();
+      // skip the Arabic-mirror URLs (/ar/hadith/…) — same record, different skin
+      if (/\/ar\/hadith\//.test(u)) continue;
       const mm = u.match(/\/hadith\/(\d+)\/(\d+)\/(\d+)\/(\d+)\/?$/);
       if (!mm) continue;
       const c = Number(mm[1]);
       if (!COLLECTIONS.includes(c)) continue;
+      if (seenUrl.has(u)) continue;
       const key = `${c}/${mm[2]}`;
       if (!wanted.has(key)) wanted.set(key, []);
       const arr = wanted.get(key);
-      if (arr.length < PER_COLLECTION) arr.push(u);
+      if (arr.length < PER_COLLECTION) {
+        arr.push(u);
+        seenUrl.add(u);
+      }
     }
   }
 
   const urls = [...wanted.values()].flat();
-  console.log(`[hadith] fetching ${urls.length} hadith pages…`);
+  note(`fetching ${urls.length} hadith pages`);
 
-  const records = [];
+  const byId = new Map();
   let done = 0;
   let queue = [...urls];
   const workers = Array.from({ length: CONCURRENCY }, async () => {
@@ -267,22 +315,25 @@ async function main() {
       const html = await get(url);
       if (html) {
         const rec = parsePage(html, url);
-        if (rec) records.push(rec);
+        if (rec) {
+          const prev = byId.get(rec.id);
+          // prefer the richest version of a duplicated record
+          if (!prev || (prev.en ? 0 : 1) < (rec.en ? 0 : 1) || rec.en.length > prev.en.length) byId.set(rec.id, rec);
+        }
       }
       done += 1;
-      if (done % 25 === 0) console.log(`[hadith] ${done}/${urls.length} … ${records.length} parsed`);
-      await sleep(120);
+      await sleep(110);
     }
   });
   await Promise.all(workers);
 
-  records.sort((a, b) => a.c - b.c || a.b - b.b || a.ch - b.ch || a.h - b.h);
+  const records = [...byId.values()].sort((a, b) => a.c - b.c || a.b - b.b || a.ch - b.ch || a.h - b.h);
 
   mkdirSync(OUT_DIR, { recursive: true });
   const payload = {
     source: 'thaqalayn.com',
     canonicalBase: 'https://thaqalayn.com',
-    alias: 'thaqalyn.net',
+    alias: 'thaqalyn.net (redirects to thaqalayn.com)',
     builtFrom: 'sitemap + hadith pages',
     collections: [...new Set(records.map((r) => r.c))].sort((a, b) => a - b),
     count: records.length,
@@ -290,20 +341,18 @@ async function main() {
   };
   const file = join(OUT_DIR, 'hadith.json');
   writeFileSync(file, JSON.stringify(payload));
-  console.log(`[hadith] ✔ ${records.length} records → ${file.replace(ROOT + '/', '')}`);
 
-  const withGrade = records.filter((r) => r.grade).length;
-  const withAr = records.filter((r) => r.ar).length;
-  console.log(`[hadith]   arabic: ${withAr}  ·  graded: ${withGrade}  ·  english: ${records.filter((r) => r.en).length}`);
+  const n = (p) => records.filter(p).length;
+  note(`records=${records.length} ar=${n((r) => r.ar)} en=${n((r) => r.en)} graded=${n((r) => r.grade)} chapter=${n((r) => r.chapterTitle)} jsonld=${n((r) => r.jsonld)}`);
 
   if (SAMPLE) {
     console.log('\n──────── SAMPLES ────────');
     for (const r of records.slice(0, SAMPLE)) {
       console.log(
-        `\n# ${r.id}  [${r.grade || '—'}${r.grader ? ' / ' + r.grader : ''}]\n` +
+        `\n# ${r.id} [${r.grade || '—'}${r.grader ? ' / ' + r.grader : ''}] vol=${r.volume}\n` +
           `chapter : ${r.chapterTitle}\n` +
-          `ar      : ${r.ar.slice(0, 180)}\n` +
-          `en      : ${r.en.slice(0, 220)}\n` +
+          `ar      : ${r.ar.slice(0, 170)}\n` +
+          `en      : ${r.en.slice(0, 210)}\n` +
           `url     : ${r.url}`
       );
     }
