@@ -9,7 +9,7 @@
 #     bash scripts/build-apk.sh ci             # non-interactive, no gradle daemon
 #
 #  Prerequisites:
-#     • JDK 17+          (java -version)
+#     • JDK 21+          (java -version)
 #     • Android SDK      (ANDROID_HOME / ANDROID_SDK_ROOT)
 #     • Node 20+
 #
@@ -45,8 +45,8 @@ if ! command -v java >/dev/null 2>&1; then
 fi
 
 JAVA_MAJOR="$(java -version 2>&1 | sed -E 's/.*version "([0-9]+).*/\1/' | head -1)"
-if [[ "${JAVA_MAJOR:-0}" =~ ^[0-9]+$ ]] && (( JAVA_MAJOR < 17 )); then
-  bad "JDK $JAVA_MAJOR detected — JDK 17 or newer is required by Android Gradle Plugin 8.x."
+if [[ "${JAVA_MAJOR:-0}" =~ ^[0-9]+$ ]] && (( JAVA_MAJOR < 21 )); then
+  bad "JDK $JAVA_MAJOR detected — JDK 21 or newer is required by Capacitor 7 / Android Gradle Plugin 8.7."
   exit 1
 fi
 

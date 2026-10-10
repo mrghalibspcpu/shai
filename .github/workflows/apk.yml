@@ -7,47 +7,10 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
-    inputs:
-      mode:
-        description: 'What to run'
-        required: true
-        default: 'build'
-        type: choice
-        options:
-          - build
-          - keystore
 
 jobs:
-  # ── One-off: mint the signing key every SHAI build shares ──────────────
-  keystore:
-    name: Mint signing keystore
-    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'keystore'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-      - name: Create keystore
-        run: |
-          keytool -genkeypair -v \
-            -keystore shai-release.jks \
-            -storepass 'shai-android-2026' \
-            -keypass 'shai-android-2026' \
-            -alias shai \
-            -keyalg RSA -keysize 2048 -validity 10950 \
-            -dname "CN=SHAI, OU=SHAI Mobile, O=SHAI, L=Islamabad, ST=Islamabad, C=PK"
-      - name: Verify
-        run: keytool -list -keystore shai-release.jks -storepass 'shai-android-2026'
-      - uses: actions/upload-artifact@v4
-        with:
-          name: SHAI-keystore
-          path: shai-release.jks
-          retention-days: 90
-
   test:
     name: Self-test (jsdom)
-    if: github.event_name != 'workflow_dispatch' || inputs.mode != 'keystore'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -56,8 +19,7 @@ jobs:
           node-version: '20'
           cache: npm
       - run: npm ci
-      - run: npm install --no-save --no-audit --no-fund jsdom
-      - run: npm run test
+      - run: npm test
 
   build:
     name: Build APK
@@ -71,11 +33,18 @@ jobs:
           node-version: '20'
           cache: npm
 
+      # Capacitor 7 / AGP 8.7 compile with source+target compatibility 21.
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
           cache: gradle
+
+      - name: Android SDK environment
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          ls "$ANDROID_HOME/platforms" || true
+          ls "$ANDROID_HOME/build-tools" || true
 
       - name: Install JS dependencies
         run: npm ci
@@ -89,33 +58,79 @@ jobs:
       - name: Grant gradlew permission
         run: chmod +x android/gradlew
 
-      - name: Assemble debug APK
-        run: ./android/gradlew -p android assembleDebug --no-daemon --console=plain
+      # Mint the shared signing key the first time (it is committed afterwards,
+      # so every later build is signed identically and updates install cleanly).
+      - name: Ensure signing keystore
+        id: keystore
+        run: |
+          mkdir -p android/keystore
+          echo "minted=false" >> "$GITHUB_OUTPUT"
+          if [ ! -f android/keystore/shai-release.jks ]; then
+            echo "::notice::Minting a fresh signing keystore"
+            echo "minted=true" >> "$GITHUB_OUTPUT"
+            keytool -genkeypair -v \
+              -keystore android/keystore/shai-release.jks \
+              -storepass 'shai-android-2026' \
+              -keypass   'shai-android-2026' \
+              -alias shai \
+              -keyalg RSA -keysize 2048 -validity 10950 \
+              -dname "CN=SHAI, OU=SHAI Mobile, O=SHAI, L=Islamabad, ST=Islamabad, C=PK"
+          else
+            echo "::notice::Using committed keystore"
+          fi
+          keytool -list -keystore android/keystore/shai-release.jks \
+            -storepass 'shai-android-2026'
 
-      - name: Assemble release (unsigned) APK
-        run: ./android/gradlew -p android assembleRelease --no-daemon --console=plain
+      - name: Assemble APKs
+        id: gradle
+        run: |
+          set +e
+          ./android/gradlew -p android assembleDebug assembleRelease \
+            --no-daemon --console=plain > gradle.log 2>&1
+          code=$?
+          set -e
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          # CI log archives are not always reachable, so mirror the tail of the
+          # Gradle output into job annotations + the step summary.
+          if [ "$code" != "0" ]; then
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            tail -n 250 gradle.log >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            tail -n 60 gradle.log | while IFS= read -r line; do
+              echo "::error title=gradle::$line"
+            done
+          fi
+          exit $code
 
       - name: Collect APKs
-        id: collect
         run: |
           mkdir -p build
-          cp "$(find android/app/build/outputs/apk/debug -name '*.apk' | head -1)"  build/SHAI-debug.apk
-          cp "$(find android/app/build/outputs/apk/release -name '*.apk' | head -1)" build/SHAI-release-unsigned.apk
+          cp "$(find android/app/build/outputs/apk/debug   -name '*.apk' | head -1)" build/SHAI-debug.apk
+          cp "$(find android/app/build/outputs/apk/release -name '*.apk' | head -1)" build/SHAI-release.apk
           ls -lh build
+          "${ANDROID_HOME}/build-tools/"*/apksigner verify --print-certs build/SHAI-release.apk | head -20
 
       - uses: actions/upload-artifact@v4
         with:
           name: SHAI-APK
           path: |
             build/SHAI-debug.apk
-            build/SHAI-release-unsigned.apk
-          retention-days: 30
+            build/SHAI-release.apk
+          retention-days: 90
 
-      # Attaches the APKs to a release when you push a tag like v1.0.0
+      - name: Upload keystore (first run only)
+        if: steps.keystore.outputs.minted == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: SHAI-keystore
+          path: android/keystore/shai-release.jks
+          retention-days: 90
+
+      # Pushing a tag like v1.0.0 publishes a permanent, login-free download.
       - name: Attach APKs to release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           files: |
             build/SHAI-debug.apk
-            build/SHAI-release-unsigned.apk
+            build/SHAI-release.apk

@@ -16,10 +16,32 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // ── Signing ───────────────────────────────────────────────────────
+    // Every SHAI build shares ONE key (android/keystore/shai-release.jks) so
+    // that installing a newer APK never fails with "App not installed".
+    // Override with the SHAI_KEYSTORE* environment variables for a private key.
+    signingConfigs {
+        release {
+            def ksFile = System.getenv('SHAI_KEYSTORE') ?
+                file(System.getenv('SHAI_KEYSTORE')) : file('keystore/shai-release.jks')
+            if (ksFile.exists()) {
+                storeFile ksFile
+                storePassword System.getenv('SHAI_KEYSTORE_PASSWORD') ?: 'shai-android-2026'
+                keyAlias     System.getenv('SHAI_KEY_ALIAS')          ?: 'shai'
+                keyPassword  System.getenv('SHAI_KEY_PASSWORD')       ?: 'shai-android-2026'
+            } else {
+                logger.warn("No keystore at ${ksFile} — release build will not be signed.")
+            }
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (signingConfigs.release.storeFile != null) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }

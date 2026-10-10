@@ -23,6 +23,7 @@ android/release/
 *.jks
 *.keystore
 keystore.properties
+!android/keystore/shai-release.jks
 **/google-services.json
 
 # Logs & OS junk
