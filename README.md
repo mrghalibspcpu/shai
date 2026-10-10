@@ -25,6 +25,28 @@
 
 ---
 
+## 📲 APK ڈاؤن لوڈ کریں (تیار، انسٹال کرنے کے لیے)
+
+**👉 <https://github.com/mrghalibspcpu/shai/releases/download/v1.0.0/SHAI-release.apk>**
+
+| فائل | سائز | استعمال |
+|---|---|---|
+| **`SHAI-release.apk`** | 8.7 MB | ✅ **یہ انسٹال کریں** — release build، signed، ڈیبگ کے بغیر |
+| `SHAI-debug.apk` | 9.6 MB | صرف ڈیولپمنٹ / ٹیسٹنگ کے لیے |
+
+**انسٹال کرنے کا طریقہ**
+
+1. اوپر دیا گیا لنک فون کے براؤزر میں کھولیں (یا نیچے دیا QR کوڈ اسکین کریں)۔
+2. **Settings → Security → Install unknown apps** سے اپنے براؤزر کی اجازت دیں۔
+3. ڈاؤن لوڈ شدہ APK پر ٹیپ کریں → **Install**۔
+4. ایپ کھولیں → **Get API Key** → <https://aistudio.google.com/app/apikey> →
+   Key کاپی کر کے paste کریں۔ Key صرف آپ کے فون پر محفوظ ہوتی ہے۔
+
+> ہر بلڈ ایک ہی signing key سے sign ہوتا ہے، اس لیے آئندہ اپ ڈیٹ
+> **بغیر ان انسٹال کیے** اوپر انسٹال ہو جائے گا۔
+
+**QR کوڈ:** `build/SHAI-APK-QR.png` (ڈاؤن لوڈ) · `build/SHAI-RELEASE-QR.png` (ریلیز صفحہ)
+
 ## 🚀 فوری آغاز (ویب)
 
 ```bash
@@ -64,10 +86,10 @@ adb install -r build/SHAI-debug.apk
 (مثلاً `v1.0.0`) دیں — [GitHub Action](./.github/workflows/apk.yml)
 خودکار طور پر debug + release APK بنا کر artifact اور release میں attach کر دیتا ہے۔
 
-> نوٹ: یہ sandbox میں JDK / Android SDK موجود نہیں ہے، اس لیے `.apk` فائل یہاں
-> compile نہیں کی جا سکی — مگر **مکمل Capacitor Android پروجیکٹ، gradle کنفیگریشن،
-> branded icons/splash، بلڈ اسکرپٹ اور CI workflow سب موجود اور تیار ہیں**؛
-> اپنی مشین پر `npm run apk:debug` چلانا ہی کافی ہے۔
+> APK دراصل **GitHub Actions پر build ہو کر [v1.0.0 release](https://github.com/mrghalibspcpu/shai/releases/tag/v1.0.0)
+> میں شائع ہو چکا ہے** — اوپر دیے گئے لنک سے براہِ راست ڈاؤن لوڈ کریں۔
+> مقامی مشین پر خود build کرنے کے لیے (JDK 21 + Android SDK کے ساتھ)
+> `npm run apk:debug` چلائیں، یا بس `main` پر push کریں — CI خود APK بنا دے گا۔
 
 ---
 

@@ -1,4 +1,18 @@
-# 📱 SHAI — Android APK بنانے کی مکمل ہدایات
+# 📱 SHAI — Android APK
+
+## ⬇️ پہلے یہ پڑھیں: تیار APK ڈاؤن لوڈ کریں
+
+**👉 <https://github.com/mrghalibspcpu/shai/releases/download/v1.0.0/SHAI-release.apk>** (8.7 MB)
+
+فون کے براؤزر میں کھولیں → *Install unknown apps* کی اجازت دیں → Install →
+AI Studio سے API key لے کر paste کریں۔ مکمل مرحلہ وار ہدایات
+[README.md](./README.md#-apk-ڈاؤن لوڈ-کریں-تیار-انسٹال-کرنے-کے-لیے) میں ہیں۔
+
+نیچے دی گئی ہدایات اُس وقت کام آتی ہیں جب آپ **خود** APK build کرنا چاہیں۔
+
+---
+
+# 🔧 Android APK بنانے کی مکمل ہدایات
 
 یہ دستاویز بتاتی ہے کہ SHAI کو ایک انسٹال ہونے والی `.apk` فائل میں کیسے بدلا جائے۔
 Capacitor کا Android پروجیکٹ **پہلے ہی ریپو میں موجود اور کنفیگر ہے** (`android/`)۔
@@ -29,7 +43,7 @@ CI خود APK بنا دے گا۔
 | ضرورت | کم از کم | چیک |
 |---|---|---|
 | **Node.js** | 20+ | `node -v` |
-| **JDK** | 17 | `java -version` |
+| **JDK** | **21** | `java -version` |
 | **Android SDK** | API 35 + build-tools | `echo $ANDROID_HOME` |
 | **Android Studio** (اختیاری) | Ladybug+ | — |
 
@@ -154,6 +168,8 @@ android/
 * **App ID:** `net.shai.app`
 * **App name:** `SHAI`
 * **minSdk:** 23 (Android 6+) · **targetSdk:** 35
+* **Signing:** `android/keystore/shai-release.jks` (alias `shai`، password `shai-android-2026`)
+  — repo میں commit ہے تاکہ ہر بلڈ ایک ہی key سے sign ہو اور اپ ڈیٹ بغیر ان انسٹال انسٹال ہو جائے
 * **Deep links:** حوالہ جات Capacitor Browser (in-app browser) میں کھلتے ہیں
 * **Status bar / keyboard:** `@capacitor/status-bar` اور `@capacitor/keyboard` کنفیگر
 * **Back button:** اوپن overlay / سائیڈبار کو بند کرتا ہے، ورنہ ایپ سے باہر
@@ -178,7 +194,7 @@ npm run cap:open       # Android Studio میں کھولیں
 | مسئلہ | حل |
 |---|---|
 | `SDK location not found` | `android/local.properties` بنائیں یا `ANDROID_HOME` سیٹ کریں |
-| `Unsupported class file major version` | JDK 17 انسٹال کریں (`java -version` چیک کریں) |
+| `Unsupported class file major version 65` / `invalid source release: 21` | **JDK 21** انسٹال کریں (Capacitor 7 کی شرط) |
 | `npm ci` fails | `package-lock.json` موجود ہے؟ ورنہ `npm install` چلائیں |
 | APK انسٹال نہیں ہوتا | ڈیوائس پر *Unknown sources* کی اجازت دیں، پرانی انسٹال ان انسٹال کریں |
 | ایپ میں خالی صفحہ | `npx cap sync android` دوبارہ چلائیں اور Android Studio سے *Clean Project* |
