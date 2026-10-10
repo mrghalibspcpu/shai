@@ -4,9 +4,10 @@
 
 import './styles/main.css';
 
-import { buildSystemInstruction } from './lib/prompt.js';
+import { buildInstruction } from './lib/prompt.js';
+import { initCorpus, grounding as buildGrounding, corpusStats, lookup } from './lib/corpus.js';
 import { streamGenerate, friendlyError, normaliseKey } from './lib/gemini.js';
-import { extract } from './lib/citations.js';
+import { extract, setVerifier } from './lib/citations.js';
 import { qs, qsa, on, toast, sleep, openExternal } from './lib/dom.js';
 import {
   getSettings,
@@ -249,11 +250,24 @@ async function run(question, { retryFrom = null } = {}) {
   let raw = '';
   let aiEl = null;
 
+  // Ground the answer in the on-device corpus before the model starts writing.
+  let ground = null;
+  try {
+    ground = await buildGrounding(question, { k: 6, chars: 900 });
+    const stats = corpusStats();
+    if (ground?.block && stats) ground.corpus = stats.hadith + stats.quran;
+  } catch (_) {
+    ground = null;
+  }
+  const grounded = ground?.used || 0;
+  pill?.setAttribute('data-grounded', String(grounded));
+  if (grounded) pill?.setAttribute('title', `مقامی لائبریری سے ${grounded} روایات`);
+
   try {
     const stream = streamGenerate({
       apiKey: key,
       model: state.settings.model,
-      system: buildSystemInstruction(state.settings),
+      system: buildInstruction(state.settings, ground),
       history,
       message: question,
       signal: state.controller.signal,
@@ -487,7 +501,15 @@ async function boot() {
   else renderWelcome(qs('#thread'));
   renderSidebar();
 
-  qs('#build-tag').textContent = `SHAI v1.0.0 · ${state.settings.model}`;
+  qs('#build-tag').textContent = `SHAI v1.2.0 · ${state.settings.model}`;
+
+  // Load the offline hadith corpus in the background — never block first paint.
+  initCorpus().then((ok) => {
+    state.corpus = ok ? corpusStats() : null;
+    // Every citation is now checked against the corpus that ships in the app.
+    setVerifier(lookup);
+    sourcesUi?.refresh?.();
+  });
 
   // Android hardware back button
   try {

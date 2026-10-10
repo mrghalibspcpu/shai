@@ -23,7 +23,9 @@ import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const OUT_DIR = join(ROOT, 'public/data/thaqalayn');
+/* Legacy thaqalayn.com crawl — kept outside public/ so it never ships in the
+ * app bundle; scripts/build-corpus.mjs reads the gradings out of it.        */
+const OUT_DIR = join(ROOT, 'data/legacy/thaqalayn');
 
 const BASE = 'https://thaqalayn.com';
 const UA = 'SHIA-AI-IndexBuilder/1.0 (+https://github.com/mrghalibspcpu/shai)';

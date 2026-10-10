@@ -12,7 +12,18 @@
  *   3. Inline quran:2/255 tokens
  */
 
-import { parsePath, collection, quranUrl, surahName } from './sources.js';
+import { parsePath, collection, quranUrl, surahName, searchUrl } from './sources.js';
+
+/**
+ * Optional hook wired to the offline corpus (see lib/corpus.js). When it
+ * resolves an id, the citation is *verified against a real record on disk* —
+ * a strictly stronger guarantee than "the collection id exists".
+ */
+let verifier = null;
+export function setVerifier(fn) {
+  verifier = typeof fn === 'function' ? fn : null;
+}
+export const verifyId = (id) => (verifier ? verifier(id) : null);
 
 
 const INLINE_PATH = /thaqalayn:\s*(\d{1,3}\s*\/\s*\d{1,3}\s*\/\s*\d{1,4}\s*\/\s*\d{1,4})/gi;
@@ -62,6 +73,9 @@ export function normaliseRef(raw, index = 0) {
     q: raw.q,
   };
 
+  // ── Corpus-verified citation (the id really exists on device) ──
+  const local = src.path ? verifyId(src.path) : null;
+
   // ── Hadith citation ────────────────────────────────────────
   let p = parsePath(src.path);
   if (!p && [src.collection, src.book, src.chapter, src.hadith].every((v) => v != null && v !== '')) {
@@ -76,6 +90,8 @@ export function normaliseRef(raw, index = 0) {
       n: Number(raw.n ?? index + 1) || index + 1,
       path: p,
       valid: p.valid,
+      /** true only when the id was found in the shipped corpus */
+      verified: Boolean(local),
       title: [meta?.en || `Collection ${p.collection}`, vol, `Book ${p.book}`, `Ch. ${p.chapter}`, `Hadith ${p.hadith}`]
         .filter(Boolean)
         .join(' · '),
@@ -83,11 +99,41 @@ export function normaliseRef(raw, index = 0) {
         .filter(Boolean)
         .join(' · '),
       author: meta?.author || '',
-      chapterTitle: src.title || '',
-      grading: gradingInfo(src.grading),
+      chapterTitle: src.title || local?.title || '',
+      grading: gradingInfo(src.grading || local?.grade),
       grader: src.grader || '',
       note: src.note || '',
       arabic: src.arabic || '',
+    };
+  }
+
+  // ── Hadith from a book with no thaqalayn.com deep link (e.g. Tahdhīb,
+  //    al-Istibṣār) — still fully verified, just linked via search.
+  if (local) {
+    const [vol, b, ch, h] = String(local.ref || '').split('/').map(Number);
+    const book = local.book || {};
+    const titleUr = [book.ur || book.en || local.slug, vol ? `جلد ${vol}` : '', b ? `کتاب ${b}` : '', ch ? `باب ${ch}` : '', h ? `حدیث ${h}` : '']
+      .filter(Boolean)
+      .join(' · ');
+    const title = [book.en || local.slug, vol ? `Vol. ${vol}` : '', b ? `Book ${b}` : '', ch ? `Ch. ${ch}` : '', h ? `Hadith ${h}` : '']
+      .filter(Boolean)
+      .join(' · ');
+    return {
+      kind: 'hadith',
+      n: Number(raw.n ?? index + 1) || index + 1,
+      path: null,
+      localId: local.id,
+      valid: true,
+      verified: true,
+      title,
+      titleUr,
+      author: book.author || '',
+      chapterTitle: src.title || local.title || '',
+      grading: gradingInfo(src.grading || local.grade),
+      grader: src.grader || '',
+      note: src.note || '',
+      arabic: src.arabic || '',
+      searchUrl: searchUrl(local.title || book.en || local.slug),
     };
   }
 
@@ -207,7 +253,9 @@ export function renderRefs(refs, messageId = '') {
   const items = refs
     .map((r) => {
       const id = `${messageId}-ref-${r.n}`;
-      const badge = r.valid
+      const badge = r.verified
+        ? '<span class="tag tag--sahih" title="یہ حوالہ ایپ کی اپنی لائبریری میں موجود ہے">verified · لائبریری میں موجود</span>'
+        : r.valid
         ? '<span class="tag tag--sahih">verified id</span>'
         : '<span class="tag tag--warn" title="اس حوالے کی شناخت خودکار طور پر تصدیق نہیں ہو سکی">unverified</span>';
 
@@ -223,12 +271,15 @@ export function renderRefs(refs, messageId = '') {
           : '<span class="tag">Reference</span>';
 
       let links = '';
-      if (r.kind === 'hadith') {
+      if (r.kind === 'hadith' && r.path) {
         links = `
           <a class="ref__link" href="${r.path.url}" target="_blank" rel="noopener noreferrer">↗ Hadith on Thaqalayn</a>
           <a class="ref__link ref__link--ghost" href="${r.path.chapterLink}" target="_blank" rel="noopener noreferrer">Chapter</a>
           <a class="ref__link ref__link--ghost" href="${r.path.bookLink}" target="_blank" rel="noopener noreferrer">Book</a>
           <a class="ref__link ref__link--ghost" href="${r.path.urlAr}" target="_blank" rel="noopener noreferrer">عربی</a>`;
+      } else if (r.kind === 'hadith' && r.searchUrl) {
+        links = `
+          <a class="ref__link" href="${r.searchUrl}" target="_blank" rel="noopener noreferrer">↗ Thaqalayn پر تلاش کریں</a>`;
       } else if (r.kind === 'quran') {
         links = `<a class="ref__link" href="${r.url}" target="_blank" rel="noopener noreferrer">↗ Āyah on Thaqalayn</a>`;
       }
@@ -238,7 +289,7 @@ export function renderRefs(refs, messageId = '') {
       const note = r.note ? `<div class="ref__note">${esc(r.note)}</div>` : '';
       const path =
         r.kind === 'hadith'
-          ? `<div class="ref__path">thaqalayn:${esc(r.path.path)}</div>`
+          ? `<div class="ref__path">${esc(r.localId || `thaqalayn:${r.path?.path || ''}`)}</div>`
           : r.kind === 'quran'
           ? `<div class="ref__path">quran:${r.surah}/${r.verse ?? ''}</div>`
           : '';

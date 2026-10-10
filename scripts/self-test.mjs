@@ -214,6 +214,89 @@ eq('storage remove', await ST.store.get('__test', null), null);
 const defs = await ST.getSettings();
 eq('default model', defs.model, 'gemini-2.5-flash');
 
+/* ── 8 · Text normalisation (Arabic / Urdu / English) ────────── */
+section('8 · Text normalisation & tokenising');
+const T = await import('../src/lib/text.js');
+eq('harakat stripped', T.normalize('اَلْعِلْمُ'), 'العلم');
+eq('alef variants unified', T.normalize('آيات إِيمان أمة'), 'ايات ايمان امه');
+eq('urdu ٹ→ت', T.normalize('ٹ'), 'ت');
+eq('urdu ڈ→د', T.normalize('ڈ'), 'د');
+eq('urdu ک→ك', T.normalize('ک'), 'ك');
+ok('arabic token', T.tokenize('شِيعَتُنَا أَهْلُ اَلْوَرَعِ').includes('ورع'));
+ok('urdu token keeps وفاداری', T.tokenize('تقوی اور وفاداری').includes('وفاداري'));
+ok('english token', T.tokenize('the people of piety').includes('piety'));
+ok('english plural folded', T.tokenize('the scholars').includes('scholar'));
+ok('stopwords dropped', T.tokenize('قال الله تعالى').length === 0, JSON.stringify(T.tokenize('قال الله تعالى')));
+ok('punctuation never indexed', !T.tokenize('کتاب، کتاب۔ book,').some((t) => /[،۔,]/.test(t)));
+ok('keywords are unique', new Set(T.keywords('نماز نماز نماز fasting fasting')).size === 2);
+
+/* ── 9 · Offline corpus (the shipped 50k+ aḥādīth library) ───── */
+section('9 · Offline corpus');
+const { readFileSync, existsSync, statSync } = await import('node:fs');
+const PUB = new URL('../public/', import.meta.url).pathname;
+const corpusPresent = existsSync(`${PUB}data/corpus/manifest.json`);
+ok('corpus ships in public/data', corpusPresent);
+
+if (corpusPresent) {
+  globalThis.fetch = async (url) => {
+    const file = `${PUB}${String(url).replace(/^\/+/, '')}`;
+    if (!existsSync(file)) return { ok: false, status: 404 };
+    return {
+      ok: true,
+      status: 200,
+      arrayBuffer: async () => {
+        const b = readFileSync(file);
+        return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength);
+      },
+      json: async () => JSON.parse(readFileSync(file, 'utf8')),
+    };
+  };
+
+  const CO = await import('../src/lib/corpus.js');
+  ok('corpus boots', await CO.initCorpus({ base: 'data/corpus' }));
+  const st = CO.corpusStats();
+  ok(`hadith count is large (${st?.hadith})`, st.hadith > 40000, JSON.stringify(st));
+  ok(`quran verses (${st?.quran})`, st.quran > 6000);
+  ok(`books (${st?.books})`, st.books >= 23);
+  ok(`urdu translations (${st?.urdu})`, st.urdu > 40000);
+  ok(`deep-linkable records (${st?.linked})`, st.linked > 25000);
+
+  const hits = await CO.searchCorpus('نمازِ شب کی فضیلت', { k: 5 });
+  ok('urdu query returns hits', hits.length > 0, `got ${hits.length}`);
+  const enHits = await CO.searchCorpus('the virtue of seeking knowledge', { k: 5 });
+  ok('english query returns hits', enHits.length > 0);
+  const arHits = await CO.searchCorpus('طلب العلم فريضة', { k: 5 });
+  ok('arabic query returns hits', arHits.length > 0);
+  ok('hits are ranked', hits[0].score >= hits[hits.length - 1].score);
+
+  const recs = await CO.getRecords(hits.map((h) => h.i));
+  ok('shard loads full text', recs.length > 0);
+  ok('record carries arabic matn', /[\u0600-\u06FF]/.test(recs[0]?.ar || ''));
+  ok('record carries a translation', (recs[0]?.ur || recs[0]?.en || '').length > 30);
+  ok('record id round-trips', recs[0]?.id === hits.find((h) => h.i === recs[0].i)?.id);
+
+  const ground = await CO.grounding('علم حاصل کرنے کی فضیلت', { k: 3, chars: 200 });
+  ok('grounding block produced', ground.block.includes('cite:'));
+  ok('grounding quotes real ids', ground.hits.every((h) => CO.lookup(h.id)));
+  ok('grounding is bounded', ground.block.length < 20000, `len ${ground.block.length}`);
+
+  ok('lookup finds a real id', Boolean(CO.lookup(hits[0].id)));
+  ok('lookup rejects an invented id', !CO.lookup('1/2/17/99999'));
+
+  /* citations verified against the corpus */
+  const realId = hits[0].id;
+  C.setVerifier(CO.lookup);
+  const verified = C.extract(
+    `جواب۔\n\n\`\`\`refs\n[{"path":"${realId}","grading":"Sahih"},{"path":"99/9/9/9"}]\n\`\`\``,
+  );
+  eq('two refs parsed', verified.refs.length, 2);
+  ok('corpus id marked verified', verified.refs[0].verified === true);
+  ok('invented id not verified', !verified.refs[1].verified);
+  const html = C.renderRefs(verified.refs);
+  ok('verified badge rendered', html.includes('verified'));
+  ok('unverified badge rendered', html.includes('unverified'));
+}
+
 /* ── Result ──────────────────────────────────────────────────── */
 console.log(`\n\x1b[1m${fail === 0 ? '\x1b[32mALL GREEN' : '\x1b[31mFAILURES'}\x1b[0m — ${pass} passed, ${fail} failed`);
 if (fail) {

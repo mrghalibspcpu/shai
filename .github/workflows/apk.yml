@@ -9,52 +9,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  data:
-    name: Crawl & commit data index
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: arena/256c7a26-shai
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Build Thaqalayn hadith index
-        env:
-          HADITH_PER_COLLECTION: '40'
-          HADITH_CONCURRENCY: '8'
-        run: node scripts/build-hadith-index.mjs --sample 2
-      - name: Build fatawa index
-        env:
-          FATAWA_MAX_CHAPTERS: '60'
-          FATAWA_CONCURRENCY: '6'
-        run: node scripts/build-fatawa-index.mjs --sample 2
-      - name: Stats
-        run: |
-          node -e '
-            const fs=require("fs");
-            for (const p of ["public/data/thaqalayn/hadith.json","public/data/fatawa/fatawa.json"]) {
-              if (!fs.existsSync(p)) { console.log(p,"MISSING"); continue; }
-              const j=JSON.parse(fs.readFileSync(p,"utf8"));
-              console.log(p,"records:",j.count,"bytes:",fs.statSync(p).size);
-            }'
-      - name: Commit if changed
-        run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A public/data
-          if git diff --cached --quiet; then
-            echo "::notice::data index unchanged"
-          else
-            git commit -m "chore(data): refresh Thaqalayn + fatawa index [skip ci]"
-            git push origin HEAD:arena/256c7a26-shai
-            echo "::notice::data index committed"
-          fi
-
   test:
-    name: Self-test (jsdom)
+    name: Self-test (jsdom + offline corpus)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -63,6 +19,24 @@ jobs:
           node-version: '20'
           cache: npm
       - run: npm ci
+
+      # The corpus is committed to the repo (built offline from the CC0
+      # ThaqalaynData dump) — assert it is really there before packaging it.
+      - name: Verify offline hadith corpus
+        run: |
+          node -e '
+            const fs=require("fs");
+            const m=JSON.parse(fs.readFileSync("public/data/corpus/manifest.json","utf8"));
+            const shards=Object.keys(m.shards||{}).length;
+            console.log(`corpus: ${m.count} records (${m.hadith} hadith + ${m.quran} ayah) in ${m.books.length} books, ${shards} shards`);
+            console.log(`urdu=${m.translations.ur} english=${m.translations.en} deep-links=${m.linked}`);
+            if (m.hadith < 40000) throw new Error("corpus looks truncated: "+m.hadith);
+            if (!fs.existsSync("public/data/corpus/"+m.index)) throw new Error("missing "+m.index);
+            for (const s of Object.values(m.shards)) {
+              if (!fs.existsSync("public/data/corpus/"+s.file)) throw new Error("missing shard "+s.file);
+            }
+            console.log("corpus OK");'
+
       - run: npm test
 
   build:
@@ -95,11 +69,15 @@ jobs:
       - name: Install JS dependencies
         run: npm ci
 
-      - name: Build the offline data index (Thaqalayn + fatawa)
-        run: npm run build:data
-
-      - name: Build web bundle
+      - name: Build web bundle (includes public/data/corpus)
         run: npm run build
+
+      - name: Check the corpus made it into the bundle
+        run: |
+          ls dist/data/corpus/books | wc -l
+          du -sh dist dist/data/corpus
+          test -f dist/data/corpus/manifest.json
+          test -f "dist/data/corpus/$(node -p "require('./public/data/corpus/manifest.json').index")"
 
       - name: Copy web assets into the Android project
         run: npx cap sync android
@@ -107,8 +85,8 @@ jobs:
       - name: Grant gradlew permission
         run: chmod +x android/gradlew
 
-      # Mint the shared signing key the first time (it is committed afterwards,
-      # so every later build is signed identically and updates install cleanly).
+      # The signing key is committed, so every build is signed identically and
+      # updates install cleanly over the previous one.
       - name: Ensure signing keystore
         id: keystore
         run: |
@@ -175,7 +153,7 @@ jobs:
           path: android/keystore/shai-release.jks
           retention-days: 90
 
-      # Pushing a tag like v1.0.0 publishes a permanent, login-free download.
+      # Pushing a tag like v1.2.0 publishes a permanent, login-free download.
       - name: Attach APKs to release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2

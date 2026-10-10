@@ -4,6 +4,10 @@
 **خوبصورت، آسان اور دلچسپ اردو** میں جواب دیتی ہے — ہر بات کے ساتھ
 [Thaqalayn](https://thaqalayn.com) کا براہِ راست، ایک ٹیپ پر کھلنے والا حوالہ۔
 
+> **📚 پوری لائبریری ایپ کے اندر:** **52,527 احادیث و روایات** (23 کتب) + **6,236 قرآنی آیات** —
+> عربی متن، سند، انگریزی اور اردو ترجمے کے ساتھ، مکمل طور پر **آف لائن**۔
+> تفصیل نیچے [آف لائن لائبریری](#-آف-لائن-لائبریری) میں۔
+
 > **Zero hallucination by design.** ماڈل کو سختی سے ہدایت دی گئی ہے کہ وہ کبھی حدیث، آیت،
 > کتاب، جلد، باب یا حدیث نمبر نہ گھڑے۔ ہر حوالہ ایک مشینی طور پر **تصدیق شدہ** (`verified id`)
 > Thaqalayn ID پر مبنی ہوتا ہے؛ جو ID تصدیق نہ ہو سکے اُسے `unverified` نشان زد کر دیا جاتا ہے۔
@@ -27,11 +31,11 @@
 
 ## 📲 APK ڈاؤن لوڈ کریں (تیار، انسٹال کرنے کے لیے)
 
-**👉 <https://github.com/mrghalibspcpu/shai/releases/download/v1.0.0/SHAI-release.apk>**
+**👉 <https://github.com/mrghalibspcpu/shai/releases/download/v1.2.0/SHAI-release.apk>**
 
 | فائل | سائز | استعمال |
 |---|---|---|
-| **`SHAI-release.apk`** | 8.7 MB | ✅ **یہ انسٹال کریں** — release build، signed، ڈیبگ کے بغیر |
+| **`SHAI-release.apk`** | ~45 MB | ✅ **یہ انسٹال کریں** — release build، signed، مکمل آف لائن لائبریری کے ساتھ |
 | `SHAI-debug.apk` | 9.6 MB | صرف ڈیولپمنٹ / ٹیسٹنگ کے لیے |
 
 **انسٹال کرنے کا طریقہ**
@@ -86,8 +90,8 @@ adb install -r build/SHAI-debug.apk
 (مثلاً `v1.0.0`) دیں — [GitHub Action](./.github/workflows/apk.yml)
 خودکار طور پر debug + release APK بنا کر artifact اور release میں attach کر دیتا ہے۔
 
-> APK دراصل **GitHub Actions پر build ہو کر [v1.0.0 release](https://github.com/mrghalibspcpu/shai/releases/tag/v1.0.0)
-> میں شائع ہو چکا ہے** — اوپر دیے گئے لنک سے براہِ راست ڈاؤن لوڈ کریں۔
+> APK **GitHub Actions پر build ہو کر [releases](https://github.com/mrghalibspcpu/shai/releases)
+> میں شائع ہوتا ہے** — اوپر دیے گئے لنک سے براہِ راست ڈاؤن لوڈ کریں۔
 > مقامی مشین پر خود build کرنے کے لیے (JDK 21 + Android SDK کے ساتھ)
 > `npm run apk:debug` چلائیں، یا بس `main` پر push کریں — CI خود APK بنا دے گا۔
 
@@ -96,16 +100,18 @@ adb install -r build/SHAI-debug.apk
 ## 🧪 ٹیسٹ
 
 ```bash
-npm test           # unit + boot smoke (111 assertions)
+npm test           # unit + boot smoke (148 assertions)
 npm run test:unit  # pipeline: sources → citations → markdown → prompt → storage
 npm run test:smoke # پوری ایپ jsdom میں boot ہو کر چلتی ہے
 ```
 
 `npm test` دو سوٹ چلاتا ہے:
 
-1. **Self-test** (79 assertions) — Thaqalayn URL بنانے والے فنکشنز، citation extraction
+1. **Self-test** (116 assertions) — Thaqalayn URL بنانے والے فنکشنز، citation extraction
    (مکمل / ادھورا / inline / جعلی ID)، markdown رینڈرر (اردو، عربی، قرآن، nested lists،
-   tables، XSS escaping)، سسٹم پرامپٹ، Gemini error mapping، storage round-trip۔
+   tables، XSS escaping)، سسٹم پرامپٹ، Gemini error mapping، storage round-trip،
+   اردو/عربی/انگریزی tokenising، اور **پوری آف لائن لائبریری** (تلاش، shard لوڈنگ،
+   grounding، citation تصدیق)۔
 2. **Boot smoke** (32 assertions) — ایپ کو ایک IIFE بنڈل کے طور پر jsdom میں boot کر کے
    shell، onboarding کے deep links، sources drawer، settings sheet، composer اور
    conversation flows کو چیک کرتا ہے — **صفر runtime errors**۔
@@ -123,9 +129,11 @@ shai/
 │   ├── manifest.webmanifest       # PWA
 │   └── icons/
 ├── scripts/
+│   ├── build-corpus.mjs           # ThaqalaynData (CC0) → public/data/corpus
+│   ├── fetch-thaqalayn-data.sh    # CC0 ڈیٹا سیٹ vendor/ میں لانے کے لیے
 │   ├── build-fonts.mjs            # TTF → subset → WOFF2 (fonttools)
 │   ├── build-apk.sh               # debug / release / signed APK
-│   ├── self-test.mjs              # 79 assertions
+│   ├── self-test.mjs              # 116 assertions
 │   └── smoke.mjs                  # jsdom boot test
 ├── src/
 │   ├── main.js                    # app entry / orchestration
@@ -134,6 +142,8 @@ shai/
 │   │   ├── fonts.css              # @font-face + عربی/اردو کلاسیں
 │   │   └── app.css                # components
 │   ├── lib/
+│   │   ├── corpus.js              # آف لائن لائبریری: تلاش، shards، grounding
+│   │   ├── text.js                # عربی/اردو/انگریزی normalise + tokenise
 │   │   ├── sources.js             # Thaqalayn رجسٹری (39 collections) + URL builders
 │   │   ├── citations.js           # ```refs JSON → تصدیق شدہ حوالہ جات
 │   │   ├── markdown.js            # RTL/Urdu markdown renderer
@@ -146,16 +156,79 @@ shai/
 │       ├── chat.js                # thread rendering + streaming
 │       ├── settings.js
 │       └── sources.js
+├── public/data/corpus/            # 58,763 ریکارڈز: manifest + index + 47 shards
+├── data/legacy/                   # پرانا 1502 ریکارڈ کا crawl (صرف gradings کا ماخذ)
 ├── android/                       # Capacitor Android project
 └── .github/workflows/apk.yml      # CI: test → build → APK artifact
 ```
 
 ---
 
+## 📚 آف لائن لائبریری
+
+پہلے ایپ میں صرف **1,502** روایات کا ایک چھوٹا سا crawl تھا۔ اب پوری مستند لائبریری
+ایپ کے اندر موجود ہے — **35 گنا زیادہ** — اور وہ انٹرنیٹ کے بغیر تلاش بھی ہوتی ہے۔
+
+| | |
+|---|---|
+| **احادیث و روایات** | **52,527** (23 کتب) |
+| **قرآنی آیات** | **6,236** (114 سورتیں) |
+| **کل ریکارڈز** | **58,763** |
+| **اردو تراجم** | 52,586 |
+| **انگریزی تراجم** | 57,764 |
+| **سند (isnād)** | 46,478 |
+| **Thaqalayn deep links** | 27,204 |
+| **سائز (APK میں)** | ~37 MB (gzip شدہ، 47 shards) |
+
+**کتب:** الکافی (16,254) · تہذیب الاحکام (13,201) · من لا یحضرہ الفقیہ (6,382) ·
+الاستبصار (4,220) · نہج البلاغہ (2,260) · الخصال (1,282) · ثواب الاعمال (1,106) ·
+الامالی للصدوق (1,082) · عیون اخبار الرضا (954) · معانی الاخبار (829) ·
+الغیبة للطوسی (774) · کامل الزیارات (750) · التوحید (575) · کمال الدین (566) ·
+معجم الاحادیث المعتبرة (555) · الغیبة للنعمانی (468) · الامالی للمفید (387) ·
+کتاب الزہد (290) · کتاب الضعفاء (226) · کتاب المؤمن (201) · صفات الشیعہ (71) ·
+رسالة الحقوق (49) · فضائل الشیعہ (45) · اور قرآنِ مجید۔
+
+### ماخذ اور لائسنس
+
+* **[ThaqalaynData](https://github.com/narmafraz/ThaqalaynData)** — وہی ڈیٹا جو
+  thaqalayn.net / thaqalayn.com چلاتا ہے۔ لائسنس: **CC0-1.0 (public domain)**۔
+  عربی متن، سند اور تراجم اسی سے آتے ہیں۔
+* **thaqalayn.com crawl** — درجہ بندی (صحیح / حسن / موثق / ضعیف / مرسل / معتبر)
+  اور درجہ دینے والے عالم کا نام اسی پرانے crawl سے منتقل کیا گیا ہے۔
+* تراجم جن کے ساتھ `en.ai` / `ur.ai` لکھا ہے وہ اسی CC0 ڈیٹا سیٹ کی مشینی تراجم ہیں —
+  معاونت کے لیے، نہ کہ علمی ترجمے کے طور پر۔
+
+### دوبارہ بنانے کا طریقہ
+
+```bash
+npm run corpus:fetch                                    # CC0 ڈیٹا سیٹ → vendor/
+THAQALAYN_DATA=vendor/ThaqalaynData/books npm run build:corpus
+```
+
+بلڈر مکمل طور پر آف لائن اور deterministic ہے — کوئی ویب سائٹ scrape نہیں ہوتی۔
+
+### حوالہ جات کی دیانت
+
+ہر ریکارڈ کی شناخت اس کے **اصل canonical id** سے ہوتی ہے۔ جہاں ڈیٹا سیٹ کا اپنا
+`source_url` موجود اور غیر متضاد ہے، وہاں براہِ راست `thaqalayn.com/hadith/…` لنک بنتا ہے۔
+دو کتابوں (من لا یحضرہ الفقیہ، عیون اخبار الرضا) میں ڈیٹا سیٹ کے `source_url` آپس میں
+ٹکراتے تھے، اور تین کتابیں (تہذیب، الاستبصار، کمال الدین) بغیر `source_url` کے ہیں —
+ان کا کوئی جعلی deep link **نہیں** بنایا گیا؛ ان کے حوالے کتاب / جلد / باب / حدیث کی
+صحیح نشاندہی کے ساتھ Thaqalayn **سرچ** لنک پر کھلتے ہیں۔
+
 ## 🧠 RAG / Anti-Hallucination ڈیزائن
 
-SHAI کوئی ویکٹر ڈیٹا بیس نہیں چلاتی — اس کی بجائے **تین تہوں** پر مشتمل
-grounding استعمال ہوتی ہے:
+اب grounding صرف "اجازت شدہ ids کی فہرست" نہیں رہی — ہر سوال پر ایپ **اپنی لائبریری میں
+تلاش** کرتی ہے اور سب سے متعلقہ روایات ماڈل کے سامنے رکھ دیتی ہے:
+
+1. **حقیقی retrieval** — `lib/corpus.js` اردو/عربی/انگریزی سوال کو normalise کر کے
+   BM25 طرز کے inverted index پر چلاتی ہے (113,847 الفاظ کا ذخیرہ)، top-6 روایات
+   پوری سند و متن کے ساتھ سسٹم پرامپٹ میں **GROUNDING** کے طور پر شامل ہو جاتی ہیں،
+   ہر ایک کے ساتھ اس کا اصل `id`۔ ماڈل کو حکم ہے کہ صرف وہی ids نقل کرے۔
+2. **تصدیق** — جواب میں آنے والا ہر `path` لائبریری میں تلاش کیا جاتا ہے: مل جائے تو
+   `verified · لائبریری میں موجود`، ورنہ `unverified`۔
+
+اس کے علاوہ پرانی **تین تہیں** بھی برقرار ہیں:
 
 1. **مجاز IDs کی بند فہرست** — سسٹم پرامپٹ میں Thaqalayn کے 39 حقیقی collection IDs
    (براہِ راست `thaqalayn.com/sitemap/books.xml` سے ماخوذ) شامل ہیں، اور ماڈل کو سختی سے

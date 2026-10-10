@@ -1,0 +1,658 @@
+{
+ "v": 1,
+ "builtAt": "2026-10-10T19:51:13.484Z",
+ "count": 58763,
+ "hadith": 52527,
+ "quran": 6236,
+ "books": [
+  {
+   "slug": "al-amali-mufid",
+   "en": "Al-Amali (al-Mufid)",
+   "ar": "الأمالي (المفيد)",
+   "ur": "الأمالي (المفيد)",
+   "author": "Shaykh al-Mufid",
+   "kind": "hadith",
+   "count": 387,
+   "collections": [
+    13
+   ]
+  },
+  {
+   "slug": "al-amali-saduq",
+   "en": "Al-Amali (al-Saduq)",
+   "ar": "الأمالي (الصدوق)",
+   "ur": "الأمالي (الصدوق)",
+   "author": "Shaykh al-Saduq",
+   "kind": "hadith",
+   "count": 1082,
+   "collections": [
+    29
+   ]
+  },
+  {
+   "slug": "al-istibsar",
+   "en": "Al-Istibṣār",
+   "ar": "الاستبصار",
+   "ur": "الاستبصار",
+   "author": "Shaykh al-Ṭūsī",
+   "kind": "hadith",
+   "count": 4220,
+   "collections": []
+  },
+  {
+   "slug": "al-kafi",
+   "en": "Al-Kāfi",
+   "ar": "الكافي",
+   "ur": "الکافی",
+   "author": "Shaykh Muḥammad b. Yaʿqūb al-Kulaynī",
+   "kind": "hadith",
+   "count": 16254,
+   "collections": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+   ]
+  },
+  {
+   "slug": "al-khisal",
+   "en": "Al-Khisal",
+   "ar": "الخصال",
+   "ur": "الخصال",
+   "author": "Shaykh al-Saduq",
+   "kind": "hadith",
+   "count": 1282,
+   "collections": [
+    10
+   ]
+  },
+  {
+   "slug": "al-tawhid",
+   "en": "Al-Tawhid",
+   "ar": "التوحيد",
+   "ur": "التوحيد",
+   "author": "Shaykh al-Saduq",
+   "kind": "hadith",
+   "count": 575,
+   "collections": [
+    14
+   ]
+  },
+  {
+   "slug": "fadail-al-shia",
+   "en": "Fada'il al-Shi'a",
+   "ar": "فضائل الشيعة",
+   "ur": "فضائل الشيعة",
+   "author": "Shaykh al-Saduq",
+   "kind": "hadith",
+   "count": 45,
+   "collections": [
+    25
+   ]
+  },
+  {
+   "slug": "kamal-al-din",
+   "en": "Kamal al-Din wa Tamam al-Ni'ma",
+   "ar": "كمال الدين وتمام النعمة",
+   "ur": "كمال الدين وتمام النعمة",
+   "author": "Shaykh al-Saduq",
+   "kind": "hadith",
+   "count": 566,
+   "collections": []
+  },
+  {
+   "slug": "kamil-al-ziyarat",
+   "en": "Kamil al-Ziyarat",
+   "ar": "كامل الزيارات",
+   "ur": "كامل الزيارات",
+   "author": "Ibn Qulawayh al-Qummi",
+   "kind": "hadith",
+   "count": 750,
+   "collections": [
+    24
+   ]
+  },
+  {
+   "slug": "kitab-al-duafa",
+   "en": "Kitab al-Du'afa'",
+   "ar": "كتاب الضعفاء",
+   "ur": "كتاب الضعفاء",
+   "author": "Ahmad ibn al-Husayn al-Ghada'iri",
+   "kind": "hadith",
+   "count": 226,
+   "collections": [
+    17
+   ]
+  },
+  {
+   "slug": "kitab-al-ghayba-numani",
+   "en": "Kitab al-Ghayba (al-Nu'mani)",
+   "ar": "كتاب الغيبة (النعماني)",
+   "ur": "كتاب الغيبة (النعماني)",
+   "author": "Muhammad ibn Ibrahim al-Nu'mani",
+   "kind": "hadith",
+   "count": 468,
+   "collections": [
+    22
+   ]
+  },
+  {
+   "slug": "kitab-al-ghayba-tusi",
+   "en": "Kitab al-Ghayba (al-Tusi)",
+   "ar": "كتاب الغيبة (الطوسي)",
+   "ur": "كتاب الغيبة (الطوسي)",
+   "author": "Shaykh al-Tusi",
+   "kind": "hadith",
+   "count": 774,
+   "collections": [
+    27
+   ]
+  },
+  {
+   "slug": "kitab-al-mumin",
+   "en": "Kitab al-Mu'min",
+   "ar": "كتاب المؤمن",
+   "ur": "كتاب المؤمن",
+   "author": "Husayn ibn Sa'id al-Ahwazi",
+   "kind": "hadith",
+   "count": 201,
+   "collections": [
+    30
+   ]
+  },
+  {
+   "slug": "kitab-al-zuhd",
+   "en": "Kitab al-Zuhd",
+   "ar": "كتاب الزهد",
+   "ur": "كتاب الزهد",
+   "author": "Husayn ibn Sa'id al-Ahwazi",
+   "kind": "hadith",
+   "count": 290,
+   "collections": [
+    31
+   ]
+  },
+  {
+   "slug": "maani-al-akhbar",
+   "en": "Ma'ani al-Akhbar",
+   "ar": "معاني الأخبار",
+   "ur": "معاني الأخبار",
+   "author": "Shaykh al-Saduq",
+   "kind": "hadith",
+   "count": 829,
+   "collections": [
+    28
+   ]
+  },
+  {
+   "slug": "man-la-yahduruhu-al-faqih",
+   "en": "Man La Yahduruhu al-Faqih",
+   "ar": "من لا يحضره الفقيه",
+   "ur": "من لا يحضره الفقيه",
+   "author": "Shaykh al-Saduq",
+   "kind": "hadith",
+   "count": 6382,
+   "collections": [
+    34
+   ]
+  },
+  {
+   "slug": "mujam-al-ahadith-al-mutabara",
+   "en": "Mu'jam al-Ahadith al-Mu'tabara",
+   "ar": "معجم الأحاديث المعتبرة",
+   "ur": "معجم الأحاديث المعتبرة",
+   "author": "Muhammad Asif al-Muhsini",
+   "kind": "hadith",
+   "count": 555,
+   "collections": [
+    9
+   ]
+  },
+  {
+   "slug": "nahj-al-balagha",
+   "en": "Nahj al-Balagha",
+   "ar": "نهج البلاغة",
+   "ur": "نهج البلاغة",
+   "author": "Sharif al-Radi",
+   "kind": "hadith",
+   "count": 2260,
+   "collections": [
+    32
+   ]
+  },
+  {
+   "slug": "quran",
+   "en": "The Holy Quran",
+   "ar": "القرآن الكريم",
+   "ur": "القرآن الكريم",
+   "author": "",
+   "kind": "quran",
+   "count": 6236,
+   "collections": []
+  },
+  {
+   "slug": "risalat-al-huquq",
+   "en": "Risalat al-Huquq",
+   "ar": "رسالة الحقوق",
+   "ur": "رسالة الحقوق",
+   "author": "Imam Zayn al-Abidin",
+   "kind": "hadith",
+   "count": 49,
+   "collections": [
+    33
+   ]
+  },
+  {
+   "slug": "sifat-al-shia",
+   "en": "Sifat al-Shi'a",
+   "ar": "صفات الشيعة",
+   "ur": "صفات الشيعة",
+   "author": "Shaykh al-Saduq",
+   "kind": "hadith",
+   "count": 71,
+   "collections": [
+    26
+   ]
+  },
+  {
+   "slug": "tahdhib-al-ahkam",
+   "en": "Tahdhīb al-Aḥkām",
+   "ar": "تهذيب الأحكام",
+   "ur": "تہذیب الاحکام",
+   "author": "Shaykh al-Ṭūsī",
+   "kind": "hadith",
+   "count": 13201,
+   "collections": []
+  },
+  {
+   "slug": "thawab-al-amal",
+   "en": "Thawab al-A'mal wa 'Iqab al-A'mal",
+   "ar": "ثواب الأعمال وعقاب الأعمال",
+   "ur": "ثواب الأعمال وعقاب الأعمال",
+   "author": "Shaykh al-Saduq",
+   "kind": "hadith",
+   "count": 1106,
+   "collections": [
+    23
+   ]
+  },
+  {
+   "slug": "uyun-akhbar-al-rida",
+   "en": "Uyun Akhbar al-Rida",
+   "ar": "عيون أخبار الرضا",
+   "ur": "عيون أخبار الرضا",
+   "author": "Shaykh al-Saduq",
+   "kind": "hadith",
+   "count": 954,
+   "collections": [
+    11
+   ]
+  }
+ ],
+ "translations": {
+  "en": 57764,
+  "ur": 52586
+ },
+ "linked": 27204,
+ "vocab": 113847,
+ "stats": {
+  "verse": 58763,
+  "skipped": 93,
+  "withEn": 57764,
+  "withUr": 52586,
+  "withIsnad": 46478,
+  "linked": 27204,
+  "unlinked": 31559
+ },
+ "index": "index.json.gz",
+ "shards": {
+  "al-amali-mufid": {
+   "file": "books/al-amali-mufid.json.gz",
+   "n": 387,
+   "bytes": 1062661,
+   "from": 0,
+   "to": 386
+  },
+  "al-amali-saduq": {
+   "file": "books/al-amali-saduq.json.gz",
+   "n": 1082,
+   "bytes": 2833921,
+   "from": 387,
+   "to": 1468
+  },
+  "al-istibsar-1": {
+   "file": "books/al-istibsar-1.json.gz",
+   "n": 1805,
+   "bytes": 3370399,
+   "from": 1469,
+   "to": 3273
+  },
+  "al-istibsar-2": {
+   "file": "books/al-istibsar-2.json.gz",
+   "n": 989,
+   "bytes": 1818881,
+   "from": 3274,
+   "to": 4262
+  },
+  "al-istibsar-3": {
+   "file": "books/al-istibsar-3.json.gz",
+   "n": 860,
+   "bytes": 1619081,
+   "from": 4263,
+   "to": 5122
+  },
+  "al-istibsar-4": {
+   "file": "books/al-istibsar-4.json.gz",
+   "n": 566,
+   "bytes": 1072943,
+   "from": 5123,
+   "to": 5688
+  },
+  "al-kafi-1": {
+   "file": "books/al-kafi-1.json.gz",
+   "n": 1449,
+   "bytes": 3443276,
+   "from": 5689,
+   "to": 7137
+  },
+  "al-kafi-2": {
+   "file": "books/al-kafi-2.json.gz",
+   "n": 2347,
+   "bytes": 4367047,
+   "from": 7138,
+   "to": 9484
+  },
+  "al-kafi-3": {
+   "file": "books/al-kafi-3.json.gz",
+   "n": 2186,
+   "bytes": 3916425,
+   "from": 9485,
+   "to": 11670
+  },
+  "al-kafi-4": {
+   "file": "books/al-kafi-4.json.gz",
+   "n": 2211,
+   "bytes": 4008703,
+   "from": 11671,
+   "to": 13881
+  },
+  "al-kafi-5": {
+   "file": "books/al-kafi-5.json.gz",
+   "n": 2771,
+   "bytes": 4836448,
+   "from": 13882,
+   "to": 16652
+  },
+  "al-kafi-6": {
+   "file": "books/al-kafi-6.json.gz",
+   "n": 2872,
+   "bytes": 4472735,
+   "from": 16653,
+   "to": 19524
+  },
+  "al-kafi-7": {
+   "file": "books/al-kafi-7.json.gz",
+   "n": 1821,
+   "bytes": 3469840,
+   "from": 19525,
+   "to": 21345
+  },
+  "al-kafi-8": {
+   "file": "books/al-kafi-8.json.gz",
+   "n": 597,
+   "bytes": 1491497,
+   "from": 21346,
+   "to": 21942
+  },
+  "al-khisal": {
+   "file": "books/al-khisal.json.gz",
+   "n": 1282,
+   "bytes": 2623678,
+   "from": 21943,
+   "to": 23224
+  },
+  "al-tawhid": {
+   "file": "books/al-tawhid.json.gz",
+   "n": 575,
+   "bytes": 1291585,
+   "from": 23225,
+   "to": 23799
+  },
+  "fadail-al-shia": {
+   "file": "books/fadail-al-shia.json.gz",
+   "n": 45,
+   "bytes": 98820,
+   "from": 23800,
+   "to": 23844
+  },
+  "kamal-al-din": {
+   "file": "books/kamal-al-din.json.gz",
+   "n": 566,
+   "bytes": 509157,
+   "from": 23845,
+   "to": 24410
+  },
+  "kamil-al-ziyarat": {
+   "file": "books/kamil-al-ziyarat.json.gz",
+   "n": 750,
+   "bytes": 1629591,
+   "from": 24411,
+   "to": 25160
+  },
+  "kitab-al-duafa": {
+   "file": "books/kitab-al-duafa.json.gz",
+   "n": 226,
+   "bytes": 155904,
+   "from": 25161,
+   "to": 25386
+  },
+  "kitab-al-ghayba-numani": {
+   "file": "books/kitab-al-ghayba-numani.json.gz",
+   "n": 468,
+   "bytes": 935994,
+   "from": 25387,
+   "to": 25854
+  },
+  "kitab-al-ghayba-tusi": {
+   "file": "books/kitab-al-ghayba-tusi.json.gz",
+   "n": 774,
+   "bytes": 1426113,
+   "from": 25855,
+   "to": 26628
+  },
+  "kitab-al-mumin": {
+   "file": "books/kitab-al-mumin.json.gz",
+   "n": 201,
+   "bytes": 241754,
+   "from": 26629,
+   "to": 26829
+  },
+  "kitab-al-zuhd": {
+   "file": "books/kitab-al-zuhd.json.gz",
+   "n": 290,
+   "bytes": 503816,
+   "from": 26830,
+   "to": 27119
+  },
+  "maani-al-akhbar": {
+   "file": "books/maani-al-akhbar.json.gz",
+   "n": 829,
+   "bytes": 1768945,
+   "from": 27120,
+   "to": 27948
+  },
+  "man-la-yahduruhu-al-faqih-1": {
+   "file": "books/man-la-yahduruhu-al-faqih-1.json.gz",
+   "n": 1569,
+   "bytes": 2301221,
+   "from": 27949,
+   "to": 29517
+  },
+  "man-la-yahduruhu-al-faqih-2": {
+   "file": "books/man-la-yahduruhu-al-faqih-2.json.gz",
+   "n": 1696,
+   "bytes": 2487429,
+   "from": 29518,
+   "to": 31213
+  },
+  "man-la-yahduruhu-al-faqih-3": {
+   "file": "books/man-la-yahduruhu-al-faqih-3.json.gz",
+   "n": 1758,
+   "bytes": 2728099,
+   "from": 31214,
+   "to": 32971
+  },
+  "man-la-yahduruhu-al-faqih-4": {
+   "file": "books/man-la-yahduruhu-al-faqih-4.json.gz",
+   "n": 964,
+   "bytes": 1691048,
+   "from": 32972,
+   "to": 33935
+  },
+  "man-la-yahduruhu-al-faqih-5": {
+   "file": "books/man-la-yahduruhu-al-faqih-5.json.gz",
+   "n": 395,
+   "bytes": 490805,
+   "from": 33936,
+   "to": 34330
+  },
+  "mujam-al-ahadith-al-mutabara": {
+   "file": "books/mujam-al-ahadith-al-mutabara.json.gz",
+   "n": 555,
+   "bytes": 894905,
+   "from": 34331,
+   "to": 34885
+  },
+  "nahj-al-balagha": {
+   "file": "books/nahj-al-balagha.json.gz",
+   "n": 2260,
+   "bytes": 2863732,
+   "from": 34886,
+   "to": 37145
+  },
+  "quran": {
+   "file": "books/quran.json.gz",
+   "n": 6236,
+   "bytes": 4335032,
+   "from": 37146,
+   "to": 43381
+  },
+  "risalat-al-huquq": {
+   "file": "books/risalat-al-huquq.json.gz",
+   "n": 49,
+   "bytes": 60747,
+   "from": 43382,
+   "to": 43430
+  },
+  "sifat-al-shia": {
+   "file": "books/sifat-al-shia.json.gz",
+   "n": 71,
+   "bytes": 121230,
+   "from": 43431,
+   "to": 43501
+  },
+  "tahdhib-al-ahkam-1": {
+   "file": "books/tahdhib-al-ahkam-1.json.gz",
+   "n": 1567,
+   "bytes": 3242025,
+   "from": 43502,
+   "to": 45068
+  },
+  "tahdhib-al-ahkam-2": {
+   "file": "books/tahdhib-al-ahkam-2.json.gz",
+   "n": 1491,
+   "bytes": 2862102,
+   "from": 45069,
+   "to": 46559
+  },
+  "tahdhib-al-ahkam-3": {
+   "file": "books/tahdhib-al-ahkam-3.json.gz",
+   "n": 860,
+   "bytes": 1666746,
+   "from": 46560,
+   "to": 47419
+  },
+  "tahdhib-al-ahkam-4": {
+   "file": "books/tahdhib-al-ahkam-4.json.gz",
+   "n": 962,
+   "bytes": 1919237,
+   "from": 47420,
+   "to": 48381
+  },
+  "tahdhib-al-ahkam-5": {
+   "file": "books/tahdhib-al-ahkam-5.json.gz",
+   "n": 1711,
+   "bytes": 3257923,
+   "from": 48382,
+   "to": 50092
+  },
+  "tahdhib-al-ahkam-6": {
+   "file": "books/tahdhib-al-ahkam-6.json.gz",
+   "n": 1123,
+   "bytes": 2149949,
+   "from": 50093,
+   "to": 51215
+  },
+  "tahdhib-al-ahkam-7": {
+   "file": "books/tahdhib-al-ahkam-7.json.gz",
+   "n": 1867,
+   "bytes": 3509899,
+   "from": 51216,
+   "to": 53082
+  },
+  "tahdhib-al-ahkam-8": {
+   "file": "books/tahdhib-al-ahkam-8.json.gz",
+   "n": 1168,
+   "bytes": 2229931,
+   "from": 53083,
+   "to": 54250
+  },
+  "tahdhib-al-ahkam-9": {
+   "file": "books/tahdhib-al-ahkam-9.json.gz",
+   "n": 1311,
+   "bytes": 2363321,
+   "from": 54251,
+   "to": 55561
+  },
+  "tahdhib-al-ahkam-10": {
+   "file": "books/tahdhib-al-ahkam-10.json.gz",
+   "n": 1141,
+   "bytes": 2260877,
+   "from": 55562,
+   "to": 56702
+  },
+  "thawab-al-amal": {
+   "file": "books/thawab-al-amal.json.gz",
+   "n": 1106,
+   "bytes": 1750567,
+   "from": 56703,
+   "to": 57808
+  },
+  "uyun-akhbar-al-rida": {
+   "file": "books/uyun-akhbar-al-rida.json.gz",
+   "n": 954,
+   "bytes": 1888889,
+   "from": 57809,
+   "to": 58762
+  }
+ },
+ "sources": [
+  {
+   "name": "ThaqalaynData",
+   "url": "https://github.com/narmafraz/ThaqalaynData",
+   "licence": "CC0-1.0 (public domain)",
+   "note": "The dataset that drives thaqalayn.net / thaqalayn.com — Arabic matn, isnād and translations."
+  },
+  {
+   "name": "thaqalayn.com crawl",
+   "url": "https://thaqalayn.com",
+   "licence": "site content",
+   "note": "Grading (Sahih / Hasan / Muwaththaq / Daif / Mursal / Mutabar) and grader names, carried over from the earlier index."
+  }
+ ],
+ "aiTranslations": "Translations marked en.ai / ur.ai are the machine translations that ship inside the CC0 dataset — an aid to reading, not a scholarly translation."
+}

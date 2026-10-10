@@ -44,3 +44,7 @@ public/fonts/*.ttf
 
 # jsdom smoke-test scratch
 .smoke/
+
+# Local clone of the CC0 ThaqalaynData dump used by scripts/build-corpus.mjs
+# (never committed — the built corpus in public/data/corpus is what ships)
+vendor/

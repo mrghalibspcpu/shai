@@ -35,7 +35,7 @@ const EXAMPLE_URDU = `\`\`\`tr
 رات کی نماز کو لازم پکڑو، کیونکہ یہ مؤمن کا شرف ہے۔ (اصل عربی متن شامل نہ کریں)
 \`\`\``;
 
-export function buildSystemInstruction(settings = {}) {
+export function buildSystemInstruction(settings = {}, ground = null) {
   const depth = DEPTH[settings.depth] || DEPTH.balanced;
   const arabic = settings.showArabic !== false;
   const strict = settings.strictGrading !== false;
@@ -153,6 +153,37 @@ ${
 
 ════════════════════════════════════════════
 یاد رکھیں: آپ کی دیانت آپ کی پہچان ہے۔ مشکوک بات پر خاموشی، غلط بات سے بہتر ہے۔`.trim();
+}
+
+/**
+ * The grounding block carries the *actual* hadith that SHAI retrieved from the
+ * offline corpus, so the model quotes a matn that really exists and cites an id
+ * that really resolves.
+ */
+export function groundingSection(ground) {
+  if (!ground?.block) return '';
+  return `
+
+════════════════════════════════════════════
+۷۔ آپ کی اپنی لائبریری سے منتخب روایات (GROUNDING)
+════════════════════════════════════════════
+یہ ${ground.used} روایت/آیت ایپ کی آف لائن لائبریری سے آپ کے اسی سوال کے لیے نکالی گئی ہیں
+(مجموعی ذخیرہ: ${ground.corpus || '—'} احادیث و آیات)۔ ہر ایک کے ساتھ اُس کا **اصل id** دیا گیا ہے۔
+
+${ground.block}
+
+قواعد:
+• اگر ان میں سے کوئی روایت سوال سے متعلق ہے تو **وہی اصل متن** نقل کریں اور حوالے میں
+  **وہی id** لکھیں جو اوپر دیا گیا ہے — اپنی طرف سے کوئی id نہ بنائیں۔
+• اگر کوئی روایت متعلقہ نہیں تو اسے چھوڑ دیں؛ متعلقہ نہ ہونے پر زبردستی پیش نہ کریں۔
+• درجہ (Sahih / Hasan / Ḍaʿīf …) جیسا لکھا ہے ویسا ہی بتائیں۔
+• ان کے علاوہ کوئی اور حوالہ صرف اُسی صورت میں دیں جب آپ اُس کے id اور متن پر
+  پوری طرح مطمئن ہوں — ورنہ مت دیں۔`;
+}
+
+/** System instruction + (optional) retrieved evidence, in one string. */
+export function buildInstruction(settings = {}, ground = null) {
+  return buildSystemInstruction(settings, ground) + groundingSection(ground);
 }
 
 /** Short greeting instruction used for the very first turn of a conversation. */
