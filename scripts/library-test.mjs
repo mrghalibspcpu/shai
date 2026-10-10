@@ -15,7 +15,7 @@
 
 const { normaliseArabic, tokenize, buildIndex, useIndex, search, viewOf, contextBlock } = await import('../src/lib/library.js');
 const { setCitationContext, extract, renderRefs } = await import('../src/lib/citations.js');
-const { parseKeywords, sourceMap, retrievalBody } = await import('../src/lib/grounded.js');
+const { parseKeywords, sourceMap, retrievalBody, prepareTurn } = await import('../src/lib/grounded.js');
 
 let pass = 0;
 let fail = 0;
@@ -128,6 +128,13 @@ ok('keyword junk yields empty lists', parseKeywords('no json here').en.length ==
 const local = retrievalBody(hits.slice(0, 2), { noKey: true });
 ok('retrieval-only body lists refs block', local.includes('```refs') && local.includes('retrieval-only'));
 ok('no-hit body says nothing found', retrievalBody([]).includes('کوئی روایت'));
+
+console.log('\n── Library missing (e.g. CI APK): fallback, never a dead end');
+useIndex(null);
+const noLibKey = await prepareTurn('نماز شب', { apiKey: 'AIzaSyTESTKEY1234567890abcdef' });
+ok('with key and no library → legacy mode', noLibKey.mode === 'legacy' && noLibKey.message === 'نماز شب');
+const noLibNoKey = await prepareTurn('نماز شب', { apiKey: '' });
+ok('no key and no library → clear local message', noLibNoKey.mode === 'local' && noLibNoKey.body.includes('لائبریری'));
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

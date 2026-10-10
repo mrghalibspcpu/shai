@@ -80,9 +80,26 @@ export function retrievalBody(hits, { noKey = false } = {}) {
  * Prepare everything for one turn.
  * @returns {Promise<{mode: 'model'|'local', message?: string, body?: string, hits: Array, contextMap: Map, sources: Array}>}
  */
+export const LEGACY_NOTE =
+  '> ⚠️ **لائبریری دستیاب نہیں ہے۔** یہ جواب ماڈل کی اپنی یادداشت سے ہے، اس لیے اس کے حوالے **تصدیق شدہ نہیں** ہیں۔ براہِ کرم ہر حوالہ خود کھول کر متن دیکھ لیں۔';
+
 export async function prepareTurn(question, { apiKey = '', model, signal } = {}) {
-  await loadLibrary();
   const key = normaliseKey(apiKey);
+  try {
+    await loadLibrary();
+  } catch (_) {
+    // Library not bundled (e.g. CI APK build): answer without grounding, clearly labelled.
+    if (!key) {
+      return {
+        mode: 'local',
+        body: 'لائبریری دستیاب نہیں اور Gemini API key بھی شامل نہیں۔ Settings میں key شامل کریں۔',
+        hits: [],
+        contextMap: new Map(),
+        sources: [],
+      };
+    }
+    return { mode: 'legacy', message: question, hits: [], contextMap: new Map(), sources: [] };
+  }
   let terms = question;
   if (key) {
     const kw = await extractKeywords({ apiKey: key, model, question, signal });

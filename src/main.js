@@ -7,7 +7,7 @@ import './styles/main.css';
 import { buildSystemInstruction } from './lib/prompt.js';
 import { streamGenerate, friendlyError, normaliseKey } from './lib/gemini.js';
 import { extract, setCitationContext } from './lib/citations.js';
-import { prepareTurn } from './lib/grounded.js';
+import { prepareTurn, LEGACY_NOTE } from './lib/grounded.js';
 import { qs, qsa, on, toast, sleep, openExternal } from './lib/dom.js';
 import {
   getSettings,
@@ -256,19 +256,26 @@ async function run(question, { retryFrom = null } = {}) {
     // Only the sources retrieved for this turn may be cited (see citations.js).
     setCitationContext(turn.contextMap);
 
+    const modelStream = (system) =>
+      streamGenerate({
+        apiKey: key,
+        model: state.settings.model,
+        system,
+        history,
+        message: turn.message,
+        signal: state.controller.signal,
+      });
     const stream =
       turn.mode === 'local'
         ? (async function* localReply() {
             yield turn.body;
           })()
-        : streamGenerate({
-            apiKey: key,
-            model: state.settings.model,
-            system: buildSystemInstruction(state.settings),
-            history,
-            message: turn.message,
-            signal: state.controller.signal,
-          });
+        : turn.mode === 'legacy'
+        ? (async function* legacyReply() {
+            yield `${LEGACY_NOTE}\n\n`;
+            yield* modelStream(buildSystemInstruction(state.settings, { grounded: false }));
+          })()
+        : modelStream(buildSystemInstruction(state.settings));
 
     let first = true;
     for await (const chunk of stream) {

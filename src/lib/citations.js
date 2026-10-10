@@ -286,7 +286,7 @@ export function renderRefs(refs, messageId = '') {
         r.kind === 'library'
           ? libraryBadge(r)
           : r.valid
-          ? '<span class="tag tag--sahih">verified id</span>'
+          ? '<span class="tag tag--sahih">id ok · متن غیر تصدیق شدہ</span>'
           : '<span class="tag tag--warn" title="اس حوالے کی شناخت خودکار طور پر تصدیق نہیں ہو سکی">unverified</span>';
 
       const gradeTag = r.grading

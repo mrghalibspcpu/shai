@@ -11,6 +11,8 @@
  *     the user can open the live page and check the text themselves.
  */
 
+import { buildLegacySystemInstruction } from './prompt-legacy.js';
+
 const DEPTH = {
   concise: {
     ur: 'مختصر اور جامع',
@@ -33,8 +35,7 @@ const DEPTH = {
  */
 export function buildSystemInstruction(settings = {}, { grounded = true } = {}) {
   const depth = DEPTH[settings.depth] || DEPTH.balanced;
-  const strict = settings.strictGrading !== false;
-  if (!grounded) return legacyInstruction(depth, strict);
+  if (!grounded) return buildLegacySystemInstruction(settings);
 
   return `آپ **SHAI** ہیں — شیعی احادیث اور قرآن پر مبنی ایک اردو معاون۔
 
@@ -94,13 +95,6 @@ export function buildSystemInstruction(settings = {}, { grounded = true } = {}) 
 ════════════════════════════════════════════
 یاد رکھیں: آپ کی دیانت آپ کی پہچان ہے۔ جو ماخذ نہ ہو، اس کا دعویٰ نہ کریں۔
 `.trim();
-}
-
-/** Pre-retrieval instruction (no sources provided). Kept for compatibility. */
-function legacyInstruction(depth, strict) {
-  return `آپ **SHAI** ہیں۔ دیے گئے ماخذ کے بغیر کوئی حدیث یا آیت نہ لکھیں۔
-جواب ${depth.ur} ہو۔ ${depth.rule}
-${strict ? 'صرف معتبر روایات پیش کریں۔' : ''}`.trim();
 }
 
 /** Keyword-extraction instruction (Gemini returns search terms only, never matn or references). */
