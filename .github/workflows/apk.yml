@@ -7,10 +7,47 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'What to run'
+        required: true
+        default: 'build'
+        type: choice
+        options:
+          - build
+          - keystore
 
 jobs:
+  # ── One-off: mint the signing key every SHAI build shares ──────────────
+  keystore:
+    name: Mint signing keystore
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'keystore'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Create keystore
+        run: |
+          keytool -genkeypair -v \
+            -keystore shai-release.jks \
+            -storepass 'shai-android-2026' \
+            -keypass 'shai-android-2026' \
+            -alias shai \
+            -keyalg RSA -keysize 2048 -validity 10950 \
+            -dname "CN=SHAI, OU=SHAI Mobile, O=SHAI, L=Islamabad, ST=Islamabad, C=PK"
+      - name: Verify
+        run: keytool -list -keystore shai-release.jks -storepass 'shai-android-2026'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SHAI-keystore
+          path: shai-release.jks
+          retention-days: 90
+
   test:
     name: Self-test (jsdom)
+    if: github.event_name != 'workflow_dispatch' || inputs.mode != 'keystore'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
