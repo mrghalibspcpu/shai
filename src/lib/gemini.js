@@ -33,7 +33,25 @@ export class GeminiError extends Error {
 }
 
 export const normaliseKey = (k) => String(k ?? '').trim().replace(/^["'\s]+|["'\s]+$/g, '');
-export const isPlausibleKey = (k) => /^AIza[0-9A-Za-z_-]{20,}$/.test(normaliseKey(k));
+
+/**
+ * Shape check only — NO prefix restriction.
+ *
+ * Google AI Studio has issued keys in several formats over time and now also
+ * issues keys that start with "AQ…" (in addition to the classic "AIza…").
+ * Hard-coding a prefix silently rejects perfectly valid keys, so we only
+ * sanity-check the character set and length here; the real test is always the
+ * live `GET /v1beta/models` call in validateKey().
+ */
+export const isPlausibleKey = (k) => {
+  const key = normaliseKey(k);
+  if (key.length < 20 || key.length > 300) return false;
+  if (/\s/.test(key)) return false;
+  return /^[A-Za-z0-9._-]+$/.test(key);
+};
+
+/** Recognised (but not required) prefixes, used only for friendlier hints. */
+export const KEY_PREFIXES = ['AIza', 'AQ'];
 
 /* ── Error translation ───────────────────────────────────────── */
 
@@ -179,7 +197,7 @@ export async function validateKey(key, { signal } = {}) {
       ok: false,
       error: {
         title: 'Key کا فارمیٹ درست نہیں',
-        hint: 'Gemini کی key عموماً "AIza…" سے شروع ہوتی ہے۔ AI Studio سے دوبارہ کاپی کریں۔',
+        hint: 'Gemini key صرف حروف/اعداد اور - _ . پر مشتمل ہوتی ہے ("AIza…" یا "AQ…" دونوں قبول ہیں)۔',
       },
     };
 

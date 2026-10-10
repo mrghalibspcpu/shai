@@ -66,7 +66,7 @@ export function initOnboarding({ onReady }) {
     if (!isPlausibleKey(key)) {
       showError(
         'Key کا فارمیٹ درست نہیں',
-        'Gemini کی key عموماً "AIza…" سے شروع ہوتی ہے۔ دوبارہ کاپی کریں۔'
+        'Gemini key صرف حروف، اعداد اور - _ . پر مشتمل ہوتی ہے — "AIza…" اور "AQ…" دونوں قبول ہیں۔ AI Studio سے دوبارہ کاپی کریں۔'
       );
       input.focus();
       return;

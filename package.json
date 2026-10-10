@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "SHAI — Shia Hadith AI: authentic Urdu answers grounded in Thaqalayn (Ahadith, Quran, Duas)",
+  "description": "شیعہ اے آئی (Shia AI) — authentic Urdu answers grounded in Thaqalayn hadith data and sistani.org fatawa",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",

@@ -1,7 +1,7 @@
 {
-  "name": "SHAI — Shia Hadith AI",
-  "short_name": "SHAI",
-  "description": "Authentic, easy and beautiful Urdu answers grounded in Shia Ahadith, Quran and Duas with 1-tap Thaqalayn citations.",
+  "name": "شیعہ اے آئی — Shia AI",
+  "short_name": "شیعہ اے آئی",
+  "description": "Authentic Urdu answers grounded in Shia Ahadith, Quran, Duas and Fatawa with 1-tap Thaqalayn & sistani.org citations.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

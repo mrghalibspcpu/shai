@@ -1,6 +1,6 @@
 {
   "appId": "net.shai.app",
-  "appName": "SHAI",
+  "appName": "Shia AI",
   "webDir": "dist",
   "bundledWebRuntime": false,
   "loggingBehavior": "none",

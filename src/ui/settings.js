@@ -79,7 +79,7 @@ export function initSettings({ onChange, onChangeKey, onWipe }) {
       return;
     }
     if (!isPlausibleKey(key)) {
-      status('فارمیٹ درست نہیں', 'Gemini کی key "AIza…" سے شروع ہوتی ہے۔', 'err');
+      status('فارمیٹ درست نہیں', 'Key صرف حروف/اعداد اور - _ . پر مشتمل ہو ("AIza…" یا "AQ…")۔', 'err');
       return;
     }
     status('جانچا جا رہا ہے…', '', 'warn');
