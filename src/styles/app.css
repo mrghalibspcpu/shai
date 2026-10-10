@@ -1783,3 +1783,130 @@ textarea {
   -webkit-user-select: text;
   user-select: text;
 }
+
+/* ── Hadith card (beneath every Arabic matan block) ───────────── */
+.hcard {
+  margin: 6px 0 14px;
+  padding: 10px 13px;
+  border-radius: var(--r-sm);
+  border: 1px solid rgba(230, 200, 119, 0.22);
+  background: linear-gradient(180deg, rgba(230, 200, 119, 0.07), rgba(255, 255, 255, 0.02));
+  font-family: var(--font-latin);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-2);
+}
+.hcard__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+}
+.hcard__book {
+  color: var(--gold);
+  font-weight: 600;
+}
+.hcard__loc,
+.hcard__num {
+  color: var(--text-2);
+}
+.hcard__num {
+  color: var(--text);
+}
+.hcard__foot {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.hcard__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: var(--r-xs);
+  border: 1px solid rgba(230, 200, 119, 0.35);
+  background: rgba(230, 200, 119, 0.12);
+  color: var(--gold);
+  font-size: 12px;
+  text-decoration: none;
+  font-family: var(--font-urdu);
+}
+.hcard__btn:hover {
+  background: rgba(230, 200, 119, 0.22);
+  color: #fff;
+  text-decoration: none;
+}
+.hcard--warn {
+  border-color: rgba(255, 170, 90, 0.45);
+  background: rgba(255, 170, 90, 0.07);
+  color: #ffd2a8;
+  font-family: var(--font-urdu);
+}
+.ar-block--unverified {
+  opacity: 0.85;
+  border-style: dashed;
+}
+
+/* ── Fatwa references ─────────────────────────────────────────── */
+.tag--fatwa {
+  border-color: rgba(120, 200, 255, 0.4);
+  color: #bfe6ff;
+}
+.ref__text {
+  margin: 8px 0 0;
+  padding: 8px 11px;
+  border-inline-start: 2px solid rgba(120, 200, 255, 0.45);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-2);
+  font-family: var(--font-latin);
+  font-size: 12.5px;
+  line-height: 1.65;
+  max-height: 220px;
+  overflow-y: auto;
+  text-align: left;
+}
+.ref--fatwa .ref__book small {
+  font-size: 11.5px;
+  color: var(--faint);
+}
+
+/* ── Scroll-to-bottom floating button (streaming pause) ───────── */
+.scroll-bottom {
+  position: absolute;
+  left: 50%;
+  bottom: 118px;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: var(--r-pill);
+  border: 1px solid rgba(230, 200, 119, 0.4);
+  background: rgba(8, 26, 22, 0.92);
+  color: var(--gold);
+  font-family: var(--font-urdu);
+  font-size: 13px;
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+  animation: scrollBottomIn 0.2s var(--ease-out);
+}
+.scroll-bottom[hidden] {
+  display: none;
+}
+.scroll-bottom:hover {
+  background: rgba(230, 200, 119, 0.18);
+  color: #fff;
+}
+@keyframes scrollBottomIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 6px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}

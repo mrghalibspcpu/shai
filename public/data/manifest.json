@@ -1,0 +1,38 @@
+{
+  "generatedBy": "scripts/build-search-index.mjs",
+  "hadith": {
+    "file": "thaqalayn/hadith.json",
+    "count": 1502,
+    "sha256": "faefd47b1cbc068eec393f664380e45153037b071d7a997e6ca6983d12f323ae",
+    "collections": [
+      1,
+      2,
+      9,
+      10,
+      14,
+      23,
+      24,
+      29,
+      32,
+      39
+    ]
+  },
+  "fatawa": {
+    "file": "fatawa/fatawa.json",
+    "count": 910,
+    "notesSkipped": 56,
+    "duplicateIds": 21,
+    "sha256": "6a484e782a64c0b8cfb6d0c0cbf576a2118e78206a469118a032d2efce258579",
+    "marja": [
+      "Grand Ayatollah Sayyid Ali al-Husayni al-Sistani"
+    ]
+  },
+  "allowedHosts": [
+    "leader.ir",
+    "sistani.org",
+    "thaqalayn.com",
+    "www.leader.ir",
+    "www.sistani.org",
+    "www.thaqalayn.com"
+  ]
+}

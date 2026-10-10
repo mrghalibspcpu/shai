@@ -191,3 +191,38 @@ export function catalogueForPrompt() {
   });
   return lines.join('\n');
 }
+
+/* ── Absolute-URL policy ─────────────────────────────────────── */
+
+/**
+ * Hosts the app is allowed to link to. Anything else (custom protocols such as
+ * `thaqalayn:24/…`, relative paths, unknown domains) is dropped, so a link can
+ * only ever be an absolute https URL on a known authentic source.
+ */
+export const ALLOWED_HOSTS = [
+  'thaqalayn.com',
+  'www.thaqalayn.com',
+  'thaqalyn.net',
+  'www.thaqalyn.net',
+  'sistani.org',
+  'www.sistani.org',
+  'leader.ir',
+  'www.leader.ir',
+];
+
+/**
+ * Returns a normalised absolute https URL for an allowed host, or '' otherwise.
+ * `safeHref('thaqalayn:24/1/2')` → '' ; `safeHref('https://thaqalayn.com/hadith/1/2/17/14')` → same URL.
+ */
+export function safeHref(url) {
+  const raw = String(url ?? '').trim();
+  if (!raw || !/^https:\/\//i.test(raw)) return '';
+  try {
+    const u = new URL(raw);
+    if (u.protocol !== 'https:') return '';
+    if (!ALLOWED_HOSTS.includes(u.hostname.toLowerCase())) return '';
+    return u.href;
+  } catch (_) {
+    return '';
+  }
+}

@@ -11,8 +11,39 @@
  *   ```refs … structured citations (stripped here, rendered by citations.js)
  */
 
+import { safeHref, quranUrl } from './sources.js';
+import { findHadithByMatan } from './dataset.js';
+import { gradingInfo } from './citations.js';
+
 const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ESC[c]);
+
+/**
+ * Card shown beneath every Arabic hadith block. Every field comes from the
+ * dataset row (book name, volume, book, chapter, hadith number, grade, link),
+ * never from the model's text.
+ */
+export function hadithCardHtml(rec) {
+  const grade = gradingInfo(rec.grade);
+  const url = safeHref(rec.url);
+  const vol = rec.volume ? ` · Vol. ${rec.volume}` : '';
+  return `<div class="hcard" dir="ltr" lang="en">
+    <div class="hcard__meta">
+      <span class="hcard__book">${esc(rec.collectionEn)}${esc(vol)}</span>
+      <span class="hcard__loc">Book ${rec.b} · Chapter ${rec.ch}${rec.chapterTitle ? ` — ${esc(rec.chapterTitle)}` : ''}</span>
+      <span class="hcard__num">Hadith #${rec.h}</span>
+    </div>
+    <div class="hcard__foot">
+      ${grade ? `<span class="tag tag--${grade.cls || 'warn'}">${esc(grade.label)}</span>` : '<span class="tag">Grade not stated</span>'}
+      ${url ? `<a class="hcard__btn" href="${esc(url)}" target="_blank" rel="noopener noreferrer">↗ Thaqalayn پر کھولیں</a>` : ''}
+    </div>
+  </div>`;
+}
+
+/** Shown when an Arabic block cannot be matched to any dataset record. */
+export const UNVERIFIED_CARD = `<div class="hcard hcard--warn" dir="rtl" lang="ur">
+    <div class="hcard__meta"><span class="hcard__loc">⚠ غیر تصدیق شدہ — اس متن کا ڈیٹا بیس میں ریکارڈ نہیں ملا، اس لیے لنک نہیں دیا گیا۔</span></div>
+  </div>`;
 
 const RE_FENCE = /^\s*(?:```|~~~)\s*([A-Za-z0-9_-]*)\s*$/;
 const RE_HEADING = /^(#{1,6})\s+(.*)$/;
@@ -55,11 +86,12 @@ function inline(text, msgId) {
   t = esc(t);
 
   // [text](url)
-  t = t.replace(
-    /\[([^\]]+)\]\(([^)\s]+)\)/g,
-    (_m, label, href) =>
-      `<a href="${href}" target="_blank" rel="noopener noreferrer">${label}</a>`
-  );
+  // Only absolute https links on allowed hosts survive; anything else (e.g.
+  // "thaqalayn:24/…") is shown as plain text.
+  t = t.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_m, label, href) => {
+    const ok = safeHref(href.replace(/&amp;/g, '&'));
+    return ok ? `<a href="${esc(ok)}" target="_blank" rel="noopener noreferrer">${label}</a>` : label;
+  });
 
   // **bold** / __bold__ / *italic* / ~~del~~
   t = t.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
@@ -75,11 +107,10 @@ function inline(text, msgId) {
   );
 
   // bare links
-  t = t.replace(
-    /(^|[\s(])(https?:\/\/[^\s<)]+)/g,
-    (_m, pre, url) =>
-      `${pre}<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`
-  );
+  t = t.replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g, (_m, pre, url) => {
+    const ok = safeHref(url.replace(/&amp;/g, '&'));
+    return ok ? `${pre}<a href="${esc(ok)}" target="_blank" rel="noopener noreferrer">${url}</a>` : `${pre}${url}`;
+  });
 
   // restore code spans
   t = t.replace(/\uE000(\d+)\uE000/g, (_m, i) => `<code>${esc(codes[Number(i)])}</code>`);
@@ -168,16 +199,26 @@ export function renderMarkdown(source, { msgId = 'm', refs = [] } = {}) {
         // handled by citations.js — never shown as raw text
       } else if (lang === 'ar' || lang === 'arabic') {
         skipArabic.add(out.length);
-        out.push(
-          `<div class="ar-block" lang="ar" dir="rtl">${esc(buf.join('\n')).replace(/\n/g, '<br>')}</div>`
-        );
+        // Match the Arabic block to the dataset: show the EXACT matan and attach
+        // the record's metadata card. No match → visibly unverified, no link.
+        const rec = findHadithByMatan(buf.join('\n'));
+        if (rec) {
+          out.push(
+            `<div class="ar-block" lang="ar" dir="rtl">${esc(rec.ar).replace(/\n/g, '<br>')}</div>${hadithCardHtml(rec)}`
+          );
+        } else {
+          out.push(
+            `<div class="ar-block ar-block--unverified" lang="ar" dir="rtl">${esc(buf.join('\n')).replace(/\n/g, '<br>')}</div>${UNVERIFIED_CARD}`
+          );
+        }
       } else if (lang === 'q' || lang === 'quran') {
         skipArabic.add(out.length);
         let body = buf.join('\n').trimEnd();
         let refLine = '';
         const m = body.match(/\n?\s*(\d{1,3})\s*:\s*(\d{1,3})\s*$/);
         if (m) {
-          refLine = `<span class="q-ref">Qurʾān ${m[1]}:${m[2]} · <a href="https://thaqalayn.com/quran/${m[1]}/${m[2]}" target="_blank" rel="noopener noreferrer">Thaqalayn</a></span>`;
+          const qUrl = safeHref(quranUrl(Number(m[1]), Number(m[2])));
+          refLine = `<span class="q-ref">Qurʾān ${m[1]}:${m[2]}${qUrl ? ` · <a href="${esc(qUrl)}" target="_blank" rel="noopener noreferrer">Thaqalayn</a>` : ''}</span>`;
           body = body.slice(0, m.index).trimEnd();
         }
         out.push(

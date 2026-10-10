@@ -1,5 +1,9 @@
 /**
- * SHAI · Frictionless 2-step API-key onboarding
+ * شیعہ اے آئی · Frictionless 2-step API-key onboarding
+ *
+ * Any key that passes the shape check (AIza… or AQ… — no prefix restriction) is
+ * validated live against the Gemini API and then SAVED, which is what activates
+ * the chat interface.
  */
 
 import { validateKey, isPlausibleKey, MODEL_PRIORITY } from '../lib/gemini.js';
@@ -13,7 +17,6 @@ export function initOnboarding({ onReady }) {
   const label = qs('#btn-validate-label');
   const spin = qs('#btn-validate-spin');
   const errBox = qs('#ob-error');
-  const remember = qs('#ob-remember');
   const steps = qsa('.step', overlay);
   let busy = false;
 
@@ -90,7 +93,8 @@ export function initOnboarding({ onReady }) {
       return;
     }
 
-    if (remember.checked !== false) await setApiKey(key);
+    // A validated key is always stored on this device — that is what unlocks chat.
+    await setApiKey(key);
 
     const settings = await getSettings();
     settings.model = result.model;
@@ -104,7 +108,7 @@ export function initOnboarding({ onReady }) {
 
     await new Promise((r) => setTimeout(r, 620));
     overlay.hidden = true;
-    toast('SHAI تیار ہے — اب آپ سوال پوچھ سکتے ہیں');
+    toast('شیعہ اے آئی تیار ہے — اب آپ سوال پوچھ سکتے ہیں');
     onReady?.({ key, model: result.model, models: result.models });
   }
 

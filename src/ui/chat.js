@@ -1,5 +1,13 @@
 /**
- * SHAI · Chat thread rendering + streaming
+ * SHIA AI · Chat thread rendering + streaming
+ *
+ * Streaming auto-scroll rules:
+ *   • While an answer streams, the view follows the bottom ONLY while the user
+ *     is at (or near) the bottom.
+ *   • Any touch, wheel, scrollbar drag or navigation key pauses following at
+ *     once — the view stops jumping.
+ *   • A small floating "نیچے جائیں" button appears while the user is away from
+ *     the bottom; tapping it (or scrolling back to the end) resumes following.
  */
 
 import { renderMarkdown, toPlainText } from '../lib/markdown.js';
@@ -7,12 +15,12 @@ import { extract, renderRefs } from '../lib/citations.js';
 import { LOGO_SVG, qs, toast } from '../lib/dom.js';
 
 const SUGGESTIONS = [
-  'نمازِ شب کی فضیلت کیا ہے؟',
-  'حدیثِ ثقلین کی تشریح',
-  'امام مہدی عجل اللہ فرجہ کی غیبت پر مستند روایات',
-  'زیارتِ عاشورا کی سند اور فضیلت',
-  'روزہ دار کے لیے احادیث',
-  'اہل بیت ؑ سے محبت کی علامات',
+  'نمازِ شب کی فضیلت',
+  'کافی جلد 2 باب 17 حدیث 14',
+  'روزے کے بارے میں روایات',
+  'وضو کا طریقہ — سیستانی فتویٰ',
+  'اہل بیت ؑ سے محبت',
+  'توبہ اور صبر',
 ];
 
 export function renderWelcome(threadEl) {
@@ -20,11 +28,12 @@ export function renderWelcome(threadEl) {
   wrap.className = 'welcome';
   wrap.innerHTML = `
     <div class="welcome__logo">${LOGO_SVG}</div>
-    <h2 class="welcome__title">السلام علیکم — میں <em>SHAI</em> ہوں</h2>
+    <h2 class="welcome__title">السلام علیکم — میں <em>شیعہ اے آئی</em> ہوں</h2>
     <p class="welcome__desc">
-      میں آپ کے سوال کا جواب مستند شیعی احادیث، قرآنی آیات اور ادعیہ کی روشنی میں
-      آسان اور خوبصورت اردو میں دیتا ہوں — ہر بات کے ساتھ
-      <b>Thaqalayn</b> کا براہِ راست حوالہ۔
+      میں آپ کے سوال کا جواب صرف مستند ڈیٹا بیس سے، آسان اور خوبصورت اردو میں دیتا ہوں:
+      <b>Thaqalayn</b> کی احادیث (عربی متن، ترجمہ اور مکمل حوالہ) اور
+      <b>سیستانی</b> کے فتاویٰ (مجتہد کے نام اور اصل ماخذ کے لنک کے ساتھ)۔
+      جو مواد ڈیٹا بیس میں نہ ہو، میں اس کا جواب نہیں گھڑتا۔
     </p>
     <div class="chips"></div>`;
   const chips = wrap.querySelector('.chips');
@@ -131,7 +140,7 @@ export function addTools(inner, msgEl, { onRetry }) {
       const text = toPlainText(raw);
       if (navigator.share) {
         try {
-          await navigator.share({ title: 'SHAI', text });
+          await navigator.share({ title: 'شیعہ اے آئی', text });
         } catch (_) {
           /* cancelled */
         }
@@ -231,9 +240,89 @@ export function clearThread(threadEl) {
   threadEl.innerHTML = '';
 }
 
-export function scrollToBottom(smooth = true) {
+/* ── Scroll follow / pause ───────────────────────────────────── */
+
+const BOTTOM_PX = 56;
+const scroll = { following: true, streaming: false, bound: false };
+
+export const isAtBottom = (t) => t.scrollHeight - t.scrollTop - t.clientHeight <= BOTTOM_PX;
+
+function syncScrollButton() {
+  const t = qs('#thread');
+  const btn = qs('#scroll-bottom');
+  if (!t || !btn) return;
+  // Show whenever the user is away from the end (paused or simply scrolled up).
+  btn.hidden = isAtBottom(t);
+}
+
+/** Pause following (user touched / scrolled while an answer is streaming). */
+function pauseFollow() {
+  if (!scroll.streaming) return;
+  scroll.following = false;
+  syncScrollButton();
+}
+
+/** Resume following and jump to the newest content. */
+export function resumeFollow({ smooth = true } = {}) {
+  scroll.following = true;
+  scrollToBottom(smooth, { force: true });
+  // The jump happens on the next frame; re-check the button after it lands.
+  requestAnimationFrame(() => syncScrollButton());
+  syncScrollButton();
+}
+
+/** Attach the pause / resume behaviour once. */
+export function initScrollGuard() {
+  const t = qs('#thread');
+  const btn = qs('#scroll-bottom');
+  if (!t || scroll.bound) return;
+  scroll.bound = true;
+
+  const pause = () => pauseFollow();
+  t.addEventListener('touchstart', pause, { passive: true });
+  t.addEventListener('touchmove', pause, { passive: true });
+  t.addEventListener('wheel', pause, { passive: true });
+  t.addEventListener('pointerdown', pause, { passive: true });
+  window.addEventListener('keydown', (e) => {
+    if (['PageUp', 'ArrowUp', 'Home', ' '].includes(e.key) && document.activeElement !== qs('#input')) pauseFollow();
+  });
+
+  t.addEventListener(
+    'scroll',
+    () => {
+      // Only a return to the bottom re-enables following; programmatic scrolls
+      // land at the bottom anyway, so they never turn the pause off by mistake.
+      if (isAtBottom(t)) scroll.following = true;
+      syncScrollButton();
+    },
+    { passive: true }
+  );
+
+  btn?.addEventListener('click', () => resumeFollow({ smooth: true }));
+}
+
+export function setStreaming(on) {
+  scroll.streaming = !!on;
+  if (on) scroll.following = true;
+  syncScrollButton();
+}
+
+/** Called on every streamed chunk: keep the newest text in view if following. */
+export function followIfNeeded() {
+  const t = qs('#thread');
+  if (!t || !scroll.following) return;
+  try {
+    t.scrollTo({ top: t.scrollHeight, behavior: 'instant' });
+  } catch (_) {
+    t.scrollTop = t.scrollHeight;
+  }
+  syncScrollButton();
+}
+
+export function scrollToBottom(smooth = true, { force = false } = {}) {
   const t = qs('#thread');
   if (!t) return;
+  if (!force && !scroll.following) return;
   requestAnimationFrame(() => {
     if (typeof t.scrollTo === 'function') {
       try {

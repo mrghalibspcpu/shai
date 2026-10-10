@@ -114,6 +114,11 @@
 
         <main id="thread" class="thread" aria-live="polite"></main>
 
+        <!-- Shown while streaming when the user has scrolled away from the newest text -->
+        <button id="scroll-bottom" class="scroll-bottom" type="button" hidden aria-label="نیچے جائیں">
+          <span aria-hidden="true">⌄</span> نیچے جائیں
+        </button>
+
         <footer class="composer" id="composer">
           <div class="composer__box">
             <textarea
@@ -214,10 +219,6 @@
                 />
                 <button id="btn-eye" class="field__eye" type="button" aria-label="دکھائیں">👁</button>
               </div>
-              <label class="check">
-                <input type="checkbox" id="ob-remember" checked />
-                <span>اس ڈیوائس پر محفوظ رکھیں</span>
-              </label>
             </div>
           </li>
         </ol>
@@ -327,7 +328,7 @@
           <button class="modal__x" id="sr-close" type="button" aria-label="بند کریں">✕</button>
         </div>
         <p class="drawer__sub">
-          SHAI انہی مجموعوں سے حوالہ دیتا ہے۔ کسی بھی کتاب پر ٹیپ کر کے Thaqalayn پر کھولیں۔
+          شیعہ اے آئی انہی مجموعوں سے حوالہ دیتا ہے۔ کسی بھی کتاب پر ٹیپ کر کے Thaqalayn پر کھولیں۔
         </p>
         <div id="sr-list" class="sr-list"></div>
       </div>

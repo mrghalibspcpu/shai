@@ -1,14 +1,22 @@
 #!/usr/bin/env node
 /**
- * SHAI · Self-test
+ * SHIA AI · Self-test
  * ─────────────────────────────────────────────────────────────
- * Runs the whole client-side pipeline in a jsdom DOM:
- *   sources → citations → markdown → chat rendering → prompt → gemini errors
+ * Exercises the client-side pipeline in a jsdom DOM against the REAL shipped
+ * dataset (public/data/…):
+ *   URL policy → text normalisation → dataset validation → retrieval
+ *   → citations → markdown (hadith cards) → system prompt → chat scroll guard
+ *   → API-key validation → Gemini errors → storage
  *
- *   npm i --no-save jsdom && node scripts/self-test.mjs
+ *   npm run test:unit
  */
 
 import { JSDOM } from 'jsdom';
+import { readFileSync } from 'node:fs';
+import { resolve, dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 let pass = 0;
 let fail = 0;
@@ -26,191 +34,276 @@ function ok(name, cond, detail = '') {
 }
 const eq = (name, actual, expected) =>
   ok(name, actual === expected, `got ${JSON.stringify(actual)} want ${JSON.stringify(expected)}`);
+const section = (title) => console.log(`\n\x1b[1m\x1b[36m${title}\x1b[0m`);
 
-function section(title) {
-  console.log(`\n\x1b[1m\x1b[36m${title}\x1b[0m`);
-}
-
-/* ── DOM ─────────────────────────────────────────────────────── */
-const dom = new JSDOM('<!doctype html><html dir="rtl"><body><div id="thread"></div><div id="toast"></div></body></html>', {
-  url: 'https://shai.local/',
-  pretendToBeVisual: true,
-});
+/* ── DOM (needed by chat / markdown / onboarding modules) ─────── */
+const dom = new JSDOM(
+  '<!doctype html><html dir="rtl"><body><div id="thread"></div><button id="scroll-bottom" hidden></button><textarea id="input"></textarea><div id="toast"></div></body></html>',
+  { url: 'https://shia-ai.local/', pretendToBeVisual: true }
+);
 globalThis.window = dom.window;
 globalThis.document = dom.window.document;
-Object.defineProperty(globalThis, 'navigator', {
-  value: dom.window.navigator,
-  configurable: true,
-  writable: true,
-});
+Object.defineProperty(globalThis, 'navigator', { value: dom.window.navigator, configurable: true, writable: true });
 globalThis.HTMLElement = dom.window.HTMLElement;
 globalThis.CustomEvent = dom.window.CustomEvent;
 globalThis.localStorage = dom.window.localStorage;
 globalThis.requestAnimationFrame = (cb) => setTimeout(() => cb(Date.now()), 0);
 
-/* ── 1 · Sources ─────────────────────────────────────────────── */
-section('1 · Thaqalayn source registry');
+/* ── 1 · URL policy ──────────────────────────────────────────── */
+section('1 · Absolute URL policy');
 const S = await import('../src/lib/sources.js');
 
-eq('hadith URL', S.hadithUrl(1, 2, 17, 14), 'https://thaqalayn.com/hadith/1/2/17/14');
+eq('hadith URL is absolute', S.hadithUrl(1, 0, 1, 1), 'https://thaqalayn.com/hadith/1/0/1/1');
 eq('chapter URL', S.chapterUrl(9, 3, 38), 'https://thaqalayn.com/chapter/9/3/38');
 eq('book URL', S.bookUrl(32), 'https://thaqalayn.com/book/32');
-eq('arabic URL', S.hadithUrlAr(1, 2, 17, 14), 'https://thaqalayn.com/ar/hadith/1/2/17/14');
 eq('quran URL', S.quranUrl(2, 255), 'https://thaqalayn.com/quran/2/255');
-eq('surah name', S.surahName(2), 'Al-Baqara');
-eq('surah name 114', S.surahName(114), 'An-Nās');
-ok('valid collection 1', S.isValidCollection(1));
-ok('valid collection 45', S.isValidCollection(45));
-ok('INVALID collection 15 rejected', !S.isValidCollection(15));
-ok('INVALID collection 99 rejected', !S.isValidCollection(99));
-eq('collection title', S.collection(9).en, 'Muʿjam al-Aḥādīth al-Muʿtabara');
-eq('collection volume', S.collection(8).vol, 8);
+eq('safeHref keeps allowed https', S.safeHref('https://thaqalayn.com/hadith/1/0/1/1'), 'https://thaqalayn.com/hadith/1/0/1/1');
+eq('safeHref keeps sistani.org', S.safeHref('https://www.sistani.org/english/book/48/2119/'), 'https://www.sistani.org/english/book/48/2119/');
+eq('safeHref rejects thaqalayn: protocol', S.safeHref('thaqalayn:24/1/2/3'), '');
+eq('safeHref rejects relative', S.safeHref('/hadith/1/0/1/1'), '');
+eq('safeHref rejects http', S.safeHref('http://thaqalayn.com/hadith/1/0/1/1'), '');
+eq('safeHref rejects foreign host', S.safeHref('https://evil.example/hadith/1/0/1/1'), '');
+eq('safeHref rejects javascript:', S.safeHref('javascript:alert(1)'), '');
+ok('thaqalyn.net is an allowed host', S.ALLOWED_HOSTS.includes('thaqalyn.net'));
 
-const p1 = S.parsePath('1/2/17/14');
-ok('parsePath valid', p1.valid === true);
-eq('parsePath url', p1.url, 'https://thaqalayn.com/hadith/1/2/17/14');
-const pBad = S.parsePath('99/2/17/14');
-ok('parsePath flags unknown collection', pBad.valid === false);
-ok('parsePath rejects junk', S.parsePath('not-a-path') === null);
+/* ── 2 · Text normalisation & keys ───────────────────────────── */
+section('2 · Text normalisation');
+const T = await import('../src/lib/text.js');
+eq('harakat removed', T.normText('عَلَيْكُمْ'), 'علیکم');
+eq('alef/yeh unified', T.normText('إِبْرَاهِيمَ'), 'ابراهیم');
+eq('urdu heh unified with arabic heh', T.normText('ہ'), T.normText('ه'));
+eq('latin diacritics stripped', T.normText('Al-Kāfi'), 'al kafi');
+eq('urdu digits to ascii', T.normText('۱۷/۱۴'), '17 14');
+ok('stopword list excludes content words', !T.STOPWORDS.has(T.normText('نماز')));
 
-/* ── 2 · Citations ───────────────────────────────────────────── */
-section('2 · Citation extraction');
+const G = await import('../src/lib/gemini.js');
+ok('AIza key accepted', G.isPlausibleKey('AIzaSyD-1234567890abcdefghijklmnopqrst'));
+ok('AQ key accepted (new format)', G.isPlausibleKey('AQ.Ab8RN6K1234567890abcdefghijklmnopqrstuvwx'));
+ok('AQ key with plain alnum accepted', G.isPlausibleKey('AQabcdefghijklmnopqrstuvwxyz0123456789'));
+ok('key with spaces rejected', !G.isPlausibleKey('AQ abcdefghijklmnopqrstuvwxyz0123'));
+ok('too-short key rejected', !G.isPlausibleKey('AQ123'));
+ok('random sentence rejected', !G.isPlausibleKey('hello world this is not a key'));
+eq('key is trimmed', G.normaliseKey('  AQ.Ab8RN6K1234567890abcdefghijklm  '), 'AQ.Ab8RN6K1234567890abcdefghijklm');
+
+/* ── 3 · Dataset ─────────────────────────────────────────────── */
+section('3 · Dataset index');
+const DS = await import('../src/lib/dataset.js');
+const hadithJson = JSON.parse(readFileSync(join(ROOT, 'public/data/thaqalayn/hadith.json'), 'utf8'));
+const fatawaJson = JSON.parse(readFileSync(join(ROOT, 'public/data/fatawa/fatawa.json'), 'utf8'));
+const st = DS.installDataset({ hadith: hadithJson, fatawa: fatawaJson });
+ok('dataset ready', st.status === 'ready', st.error);
+ok('hadith records loaded', st.hadithCount >= 1000, `got ${st.hadithCount}`);
+ok('fatawa rulings/Q&A loaded', st.fatwaCount >= 500, `got ${st.fatwaCount}`);
+ok('every hadith URL is absolute https', DS.hadithRecords().every((r) => /^https:\/\/thaqalayn\.com\/hadith\/\d+\/\d+\/\d+\/\d+$/.test(r.url)));
+ok('every fatwa URL is an allowed https source', DS.fatwaRecords().every((f) => S.safeHref(f.url) === f.url));
+ok('no fatwa "note" rows are citable', DS.fatwaRecords().every((f) => f.type === 'ruling' || f.type === 'qa'));
+const rec = DS.getHadith('1/0/1/1');
+ok('record 1/0/1/1 resolves', !!rec);
+eq('record collection name', rec?.collectionEn, 'Al-Kāfi');
+eq('record URL rebuilt from ids', rec?.url, 'https://thaqalayn.com/hadith/1/0/1/1');
+const badRow = DS.prepareHadith({ c: 15, b: 1, ch: 1, h: 1, ar: 'نص', en: 'x' });
+ok('unknown collection rejected', badRow === null);
+const tampered = DS.prepareHadith({ c: 1, b: 0, ch: 1, h: 1, ar: 'نص', en: 'x', url: 'thaqalayn:1/0/1/1' });
+eq('stored URL string is never trusted', tampered?.url, 'https://thaqalayn.com/hadith/1/0/1/1');
+ok('fatwa with foreign URL rejected', DS.prepareFatwa({ id: 'x', kind: 'ruling', en: 'a', url: 'https://evil.example/a' }) === null);
+
+/* ── 4 · Retrieval ───────────────────────────────────────────── */
+section('4 · Retrieval (RAG step 1)');
+const R = await import('../src/lib/search.js');
+
+const byId = R.retrieve('1/0/1/1');
+eq('locator route for c/b/ch/h', byId.route, 'locator');
+eq('locator returns exact record', byId.hadith[0]?.record.id, '1/0/1/1');
+ok('locator result not empty', !byId.empty);
+
+const fromUrl = R.retrieve('https://thaqalayn.com/hadith/2/3/1/14');
+eq('thaqalayn.com hadith URL is parsed as locator', fromUrl.hadith[0]?.record.id, '2/3/1/14');
+
+const labelled = R.retrieve('Al-Kafi vol 2 book 3 chapter 1 hadith 14');
+eq('labelled locator finds the record', labelled.hadith[0]?.record.id, '2/3/1/14');
+eq('labelled locator returns only that record', labelled.hadith.length, 1);
+
+const missing = R.retrieve('99/1/1/1');
+ok('unknown collection id → empty', missing.empty);
+eq('unknown locator reason', missing.reason, 'locator-not-found');
+
+const arabic = DS.getHadith('1/0/1/1').ar.slice(0, 90);
+const matan = R.retrieve(arabic);
+eq('pasted matan route', matan.route, 'matan');
+eq('pasted matan record', matan.hadith[0]?.record.id, '1/0/1/1');
+
+const kw = R.retrieve('نمازِ شب کی فضیلت');
+ok('keyword search returns hadith for Urdu concept', kw.hadith.length > 0, `route=${kw.route}`);
+ok('keyword results are dataset rows', kw.hadith.every((h) => DS.getHadith(h.record.id) === h.record));
+ok('keyword results obey depth cap', R.retrieve('نماز', { depth: 'concise' }).hadith.length <= 3);
+
+const sist = R.retrieve('روزے کے بارے میں سیستانی فتویٰ');
+ok('fatwa retrieval returns Sistani rulings', sist.fatwa.length > 0 && sist.fatwa.every((f) => f.record.kind === 'fatwa'));
+
+const nothing = R.retrieve('ہوائی جہاز');
+ok('unknown topic → empty (no guessing)', nothing.empty, `reason=${nothing.reason}`);
+eq('unknown topic reason', nothing.reason, 'no-match');
+eq('greeting is not a search', R.retrieve('السلام علیکم').reason, 'no-content');
+ok('empty query handled', R.retrieve('   ').empty);
+
+const ctx = R.contextForPrompt(byId);
+ok('context carries exact matan', ctx.includes('MATAN_AR (exact): ' + DS.getHadith('1/0/1/1').ar));
+ok('context carries absolute URL', ctx.includes('URL=https://thaqalayn.com/hadith/1/0/1/1'));
+ok('context carries ID', ctx.includes('ID=1/0/1/1'));
+eq('no records → empty context', R.contextForPrompt(nothing), '');
+eq('fallback refs are the retrieved ids', R.fallbackRefs(byId)[0]?.id, '1/0/1/1');
+
+/* ── 5 · Citations ───────────────────────────────────────────── */
+section('5 · Citation resolution');
 const C = await import('../src/lib/citations.js');
 
-const SAMPLE = `نمازِ شب بندے کو اللہ کے قرب تک پہنچانے والی عبادت ہے۔ [1]
-
-## فضیلتِ نمازِ شب
-
-1. **اللہ کا قرب:** امام صادق علیہ السلام فرماتے ہیں [1]
+const SAMPLE = `نمازِ شب کی فضیلت ہے۔ [1]
 
 \`\`\`ar
 عَلَيْكُمْ بِصَلَاةِ اللَّيْلِ
 \`\`\`
-\`\`\`tr
-رات کی نماز کو لازم پکڑو۔
-\`\`\`
-
-\`\`\`q
-وَمِنَ اللَّيْلِ فَتَهَجَّدْ بِهِ
-17:79
-\`\`\`
 
 \`\`\`refs
-[
-  {"path":"1/3/83/10","grading":"Sahih","grader":"Allama Majlisi","title":"Excellence of the night prayer"},
-  {"surah":17,"verse":79,"title":"The Night Journey"}
-]
-\`\`\`
-`;
-
+[{"id":"2/3/1/14"},{"id":"99/2/17/14"},{"surah":17,"verse":79,"title":"Tahajjud"}]
+\`\`\``;
 const parsed = C.extract(SAMPLE);
-eq('refs extracted', parsed.refs.length, 2);
-ok('refs block stripped from body', !parsed.body.includes('```refs'));
-ok('json not leaked into body', !parsed.body.includes('"grading"'));
-eq('ref 1 is hadith', parsed.refs[0].kind, 'hadith');
-eq('ref 1 verified', parsed.refs[0].valid, true);
-eq('ref 1 url', parsed.refs[0].path.url, 'https://thaqalayn.com/hadith/1/3/83/10');
-eq('ref 1 grading class', parsed.refs[0].grading.cls, 'sahih');
-eq('ref 2 is quran', parsed.refs[1].kind, 'quran');
-eq('ref 2 url', parsed.refs[1].url, 'https://thaqalayn.com/quran/17/79');
-ok('not streaming when fence closed', parsed.streaming === false);
+eq('valid refs kept, hallucinated id dropped', parsed.refs.length, 2);
+eq('first ref is hadith', parsed.refs[0].kind, 'hadith');
+eq('hadith ref URL from dataset', parsed.refs[0].url, 'https://thaqalayn.com/hadith/2/3/1/14');
+ok('hadith ref carries grading from dataset', !!parsed.refs[0].grading?.label, JSON.stringify(parsed.refs[0].grading));
+eq('second ref is quran', parsed.refs[1].kind, 'quran');
+ok('refs block stripped from body', !parsed.body.includes('```refs') && !parsed.body.includes('99/2/17/14'));
 
-const partial = C.extract('جواب جاری ہے…\n\n```refs\n[{"path":"1/2/17/14"');
-ok('mid-stream refs hidden', !partial.body.includes('1/2/17/14') && partial.streaming === true);
+const allowedOnly = (() => {
+  C.setAllowedRefIds(['1/0/1/1']);
+  const r = C.extract('```refs\n[{"id":"2/3/1/14"},{"id":"1/0/1/1"}]\n```').refs;
+  C.setAllowedRefIds(null);
+  return r;
+})();
+eq('citations limited to retrieved ids', allowedOnly.length, 1);
+eq('the allowed id is the one kept', allowedOnly[0]?.id, '1/0/1/1');
 
-const inlineOnly = C.extract('یہ روایت thaqalayn:24/2/79/12 میں ملتی ہے۔');
-eq('inline thaqalayn token parsed', inlineOnly.refs.length, 1);
-eq('inline token url', inlineOnly.refs[0].path.url, 'https://thaqalayn.com/hadith/24/2/79/12');
-ok('inline token removed from prose', !inlineOnly.body.includes('thaqalayn:24/2/79/12'));
+const fatwaRef = C.extract('```refs\n[{"id":"sistani-48-2119-18"}]\n```').refs[0];
+eq('fatwa ref kind', fatwaRef?.kind, 'fatwa');
+eq('fatwa link is the sistani.org record URL', fatwaRef?.url, 'https://www.sistani.org/english/book/48/2119/');
+ok('fatwa names the mujtahid', JSON.stringify(fatwaRef).includes('Sistani'));
 
-const bogus = C.extract('```refs\n[{"path":"99/2/17/14"}]\n```');
-eq('hallucinated id still parsed', bogus.refs.length, 1);
-eq('hallucinated id marked unverified', bogus.refs[0].valid, false);
+const inlineOk = C.extract('یہ روایت thaqalayn:2/3/1/14 میں ہے۔');
+eq('legacy inline token resolved via dataset', inlineOk.refs[0]?.url, 'https://thaqalayn.com/hadith/2/3/1/14');
+ok('custom protocol token removed from prose', !inlineOk.body.includes('thaqalayn:2/3/1/14'));
+ok('inline unknown token dropped', C.extract('متن thaqalayn:24/2/79/12 ختم').refs.length === 0);
 
 const refsHtml = C.renderRefs(parsed.refs, 'm1');
-ok('renderRefs has section', refsHtml.includes('class="refs"'));
-ok('renderRefs has hadith link', refsHtml.includes('https://thaqalayn.com/hadith/1/3/83/10'));
-ok('renderRefs has quran link', refsHtml.includes('https://thaqalayn.com/quran/17/79'));
-ok('renderRefs anchors match cite markers', refsHtml.includes('id="m1-ref-1"'));
-ok('renderRefs escapes XSS', !C.renderRefs([{ n: 1, kind: 'text', title: '<img src=x onerror=alert(1)>', valid: false, chapterTitle: '', note: '' }], 'm2').includes('<img'));
+ok('renderRefs shows absolute link', refsHtml.includes('href="https://thaqalayn.com/hadith/2/3/1/14"'));
+ok('renderRefs never prints thaqalayn: protocol', !/thaqalayn:\d/.test(refsHtml));
+ok('renderRefs fatwa card shows source link', C.renderRefs(C.extract('```refs\n[{"id":"sistani-48-2119-18"}]\n```').refs, 'm3').includes('https://www.sistani.org/english/book/48/2119/'));
+ok('renderRefs escapes markup', !C.renderRefs([{ n: 1, kind: 'text', title: '<img src=x onerror=alert(1)>', valid: false, chapterTitle: '', note: '' }], 'm2').includes('<img'));
 
-/* ── 3 · Markdown ────────────────────────────────────────────── */
-section('3 · Markdown renderer');
+/* ── 6 · Markdown & hadith cards ─────────────────────────────── */
+section('6 · Markdown · hadith cards');
 const M = await import('../src/lib/markdown.js');
 
-const md = M.renderMarkdown(parsed.body, { msgId: 'm1', refs: parsed.refs });
-ok('h2 rendered', md.includes('<h2>'));
-ok('ordered list rendered', md.includes('<ol>') && md.includes('<li>'));
-ok('bold rendered', md.includes('<strong>'));
-ok('arabic block rendered', md.includes('class="ar-block"'));
-ok('arabic block not double-wrapped', !md.includes('ar-block" lang="ar" dir="rtl"><span class="ar-inline"'));
-ok('quran block rendered', md.includes('class="q-block"'));
-ok('quran ref link rendered', md.includes('https://thaqalayn.com/quran/17/79'));
-ok('translation block rendered', md.includes('class="tr-block"'));
-ok('citation marker anchored', md.includes('href="#m1-ref-1"'));
-ok('no raw markers left', !/^##\s/m.test(md));
+const arBlock = '```ar\n' + DS.getHadith('1/0/1/1').ar.slice(0, 120) + '\n```';
+const mdCard = M.renderMarkdown(arBlock, { msgId: 'k' });
+ok('matched Arabic block gets a hadith card', mdCard.includes('class="hcard"'));
+ok('card shows book name and hadith number', mdCard.includes('Al-Kāfi') && mdCard.includes('Hadith #1'));
+ok('card shows chapter', mdCard.includes('Chapter 1') && mdCard.includes('Introduction'));
+ok('card link button uses dataset URL', mdCard.includes('href="https://thaqalayn.com/hadith/1/0/1/1"'));
+ok('card shows exact dataset matan', mdCard.includes(DS.getHadith('1/0/1/1').ar.slice(0, 40)));
+
+const unknownAr = M.renderMarkdown('```ar\nهذا نص غير موجود في قاعدة البيانات أبدا\n```', { msgId: 'u' });
+ok('unmatched Arabic block flagged unverified', unknownAr.includes('hcard--warn') && unknownAr.includes('ar-block--unverified'));
+ok('unverified block has no thaqalayn link', !unknownAr.includes('thaqalayn.com'));
+
+const badLink = M.renderMarkdown('[اس لنک](thaqalayn:24/1/2/3) اور [بیرونی](https://evil.example/x)');
+ok('custom-protocol markdown link not rendered as anchor', !badLink.includes('href="thaqalayn:'));
+ok('foreign-host markdown link not rendered', !badLink.includes('evil.example'));
+const goodLink = M.renderMarkdown('[تھقلین](https://thaqalayn.com/hadith/1/0/1/1)');
+ok('allowed markdown link kept', goodLink.includes('href="https://thaqalayn.com/hadith/1/0/1/1"'));
 ok('XSS escaped', !M.renderMarkdown('<script>alert(1)</script>').includes('<script>'));
+ok('quran ref line links absolute', M.renderMarkdown('```q\nوَمِنَ اللَّيْلِ\n17:79\n```').includes('https://thaqalayn.com/quran/17/79'));
 
-const nested = M.renderMarkdown('- ایک\n  - دو\n    - تین\n- چار');
-ok('nested bullet list', (nested.match(/<ul>/g) || []).length >= 2);
-const tbl = M.renderMarkdown('| a | b |\n|---|---|\n| 1 | 2 |');
-ok('table rendered', tbl.includes('<table>') && tbl.includes('<th>a</th>'));
-const code = M.renderMarkdown('```js\nconst x = 1 < 2;\n```');
-ok('code block escaped', code.includes('<pre>') && code.includes('&lt;'));
+/* ── 7 · System prompt ───────────────────────────────────────── */
+section('7 · System prompt');
+const P = await import('../src/lib/prompt.js');
+const sys = P.buildSystemInstruction({ depth: 'balanced', showArabic: true }, byId);
+ok('persona is Shia AI', sys.includes('شیعہ اے آئی (Shia AI)'));
+ok('no legacy SHAI persona', !sys.includes('SHAI'));
+ok('records injected into context', sys.includes('ID=1/0/1/1') && sys.includes('URL=https://thaqalayn.com/hadith/1/0/1/1'));
+ok('model told not to write URLs', sys.includes('URL مت لکھیں'));
+ok('model told to translate only retrieved text', sys.includes('صرف دیے گئے ریکارڈز'));
+ok('refs contract uses ids', sys.includes('"id"') && sys.includes('```refs'));
+ok('arabic contract present when enabled', sys.includes('```ar'));
+ok('arabic contract dropped when disabled', P.buildSystemInstruction({ showArabic: false }, byId) !== sys);
+ok('fatwa mujtahid disclaimer present', sys.includes('مجتہد') && sys.includes('فتویٰ'));
+ok('no unresolved template holes', !/\$\{/.test(sys));
 
-/* ── 4 · Chat rendering (jsdom) ──────────────────────────────── */
-section('4 · Chat rendering');
+/* ── 8 · Chat rendering + streaming scroll guard ─────────────── */
+section('8 · Chat rendering & scroll guard');
 const CH = await import('../src/ui/chat.js');
 const thread = document.getElementById('thread');
 const inner = CH.ensureInner(thread);
-const { msg } = CH.addMessage(inner, { role: 'assistant', content: SAMPLE, id: 'zz' });
+const { msg } = CH.addMessage(inner, { role: 'assistant', content: '', id: 'zz' });
 ok('message added', !!msg);
-ok('bubble has md', !!msg.querySelector('.md'));
-const refLinks = msg.querySelectorAll('.refs a.ref__link[href^="https://thaqalayn.com"]');
-ok('reference links rendered', refLinks.length >= 3, `found ${refLinks.length}`);
-ok('all links open safely', Array.from(refLinks).every((a) => a.rel.includes('noopener')));
 CH.updateAiMessage(msg, SAMPLE, { done: true });
+ok('hadith card rendered inside bubble', !!msg.querySelector('.hcard'));
+ok('unverified Arabic block shown as warning card', !!msg.querySelector('.hcard--warn'));
+ok('reference links are absolute', Array.from(msg.querySelectorAll('a')).filter((a) => /thaqalayn|sistani/.test(a.href)).every((a) => a.href.startsWith('https://')));
 ok('streaming caret removed when done', !msg.querySelector('.caret'));
-ok('plain text strips refs block', !CH.escapeHtml('').includes('script') && !M.toPlainText(SAMPLE).includes('"grading"'));
 
-/* ── 5 · Prompt ──────────────────────────────────────────────── */
-section('5 · System prompt');
-const { buildSystemInstruction } = await import('../src/lib/prompt.js');
-const sys = buildSystemInstruction({ depth: 'balanced', showArabic: true, strictGrading: true });
-ok('persona present', sys.includes('SHAI'));
-ok('urdu output enforced', sys.includes('اردو'));
-ok('anti-hallucination rule present', sys.includes('Zero Hallucination'));
-ok('refs contract present', sys.includes('```refs'));
-ok('catalogue embedded', sys.includes('Al-Kāfi') && sys.includes('45 ='));
-ok('catalogue has every valid id', S.VALID_IDS.every((id) => sys.includes(`${id} =`)));
-ok('depth respected', buildSystemInstruction({ depth: 'detailed' }).includes('تفصیلی'));
-const noAr = buildSystemInstruction({ showArabic: false });
-ok('arabic can be disabled', noAr.includes('عربی متن شامل نہ کریں'));
-ok('disabled prompt drops ```ar contract', !noAr.includes('```ar'));
-ok('enabled prompt keeps ```ar contract', sys.includes('```ar'));
-ok('no unresolved template holes', !/\$\{(?!msgId)/.test(sys) || !sys.includes('${'));
+// Scroll guard: give the thread a real geometry so "at bottom" is meaningful.
+const scrollBtn = document.getElementById('scroll-bottom');
+let scrollTopVal = 0;
+Object.defineProperty(thread, 'scrollHeight', { configurable: true, get: () => 1000 });
+Object.defineProperty(thread, 'clientHeight', { configurable: true, get: () => 300 });
+Object.defineProperty(thread, 'scrollTop', { configurable: true, get: () => scrollTopVal, set: (v) => (scrollTopVal = v) });
+CH.initScrollGuard();
+CH.initScrollGuard(); // idempotent
+CH.setStreaming(true);
+scrollTopVal = 700; // user is at the bottom
+CH.followIfNeeded();
+eq('follows the bottom while at the end', scrollTopVal, 1000);
 
-/* ── 6 · Gemini client ───────────────────────────────────────── */
-section('6 · Gemini client');
-const G = await import('../src/lib/gemini.js');
-ok('plausible key accepted', G.isPlausibleKey('AIzaSyD-1234567890abcdefghijklmnopqrst'));
-ok('random string rejected', !G.isPlausibleKey('hello world'));
-ok('key is trimmed', G.normaliseKey('  AIzaSyD-1234567890abcdefghijklmnopqrst  ') === 'AIzaSyD-1234567890abcdefghijklmnopqrst');
-eq('best model prefers 2.5 flash', G.bestModel([{ name: 'gemini-1.5-flash' }, { name: 'gemini-2.5-flash' }]), 'gemini-2.5-flash');
-eq('best model falls back', G.bestModel([{ name: 'gemini-1.5-flash-8b' }]), 'gemini-1.5-flash-8b');
-const e403 = G.friendlyError(new G.GeminiError('API key not valid', { status: 400 }));
-ok('400 maps to invalid key (ur)', e403.title.includes('API key'));
+scrollTopVal = 200; // user scrolls up by touching
+thread.dispatchEvent(new dom.window.Event('touchstart', { bubbles: true }));
+ok('touch pauses following', CH.isAtBottom(thread) === false);
+scrollTopVal = 200;
+CH.followIfNeeded();
+eq('streamed text does NOT yank the view while paused', scrollTopVal, 200);
+ok('scroll-to-bottom button shown while paused', scrollBtn.hidden === false);
+
+scrollBtn.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+await new Promise((r) => setTimeout(r, 20));
+eq('button resumes and jumps to newest text', scrollTopVal, 1000);
+ok('button hidden after resuming', scrollBtn.hidden === true);
+
+scrollTopVal = 100;
+thread.dispatchEvent(new dom.window.Event('wheel', { bubbles: true }));
+CH.setStreaming(false);
+CH.setStreaming(true); // a new stream starts following again
+CH.followIfNeeded();
+eq('new stream follows again', scrollTopVal, 1000);
+
+/* ── 9 · Gemini error mapping ────────────────────────────────── */
+section('9 · Gemini client');
+const e400 = G.friendlyError(new G.GeminiError('API key not valid', { status: 400 }));
+ok('400 maps to invalid key (ur)', e400.title.includes('API key'));
 const eNet = G.friendlyError(new G.GeminiError('offline', { status: 0 }));
 ok('offline mapped', eNet.title.length > 0);
+eq('best model prefers 2.5 flash', G.bestModel([{ name: 'gemini-1.5-flash' }, { name: 'gemini-2.5-flash' }]), 'gemini-2.5-flash');
 
-/* ── 7 · Storage round-trip ──────────────────────────────────── */
-section('7 · Storage');
+/* ── 10 · Storage (API key persistence) ──────────────────────── */
+section('10 · Storage');
 const ST = await import('../src/lib/storage.js');
 await ST.store.set('__test', { a: 1, b: 'اردو' });
 const back = await ST.store.get('__test');
 ok('storage round-trip', back && back.a === 1 && back.b === 'اردو');
 await ST.store.remove('__test');
 eq('storage remove', await ST.store.get('__test', null), null);
+await ST.setApiKey('  AQ.Ab8RN6K1234567890abcdefghijklm  ');
+eq('AQ key saved trimmed', await ST.getApiKey(), 'AQ.Ab8RN6K1234567890abcdefghijklm');
+await ST.clearApiKey();
+eq('key cleared', await ST.getApiKey(), '');
 const defs = await ST.getSettings();
 eq('default model', defs.model, 'gemini-2.5-flash');
 

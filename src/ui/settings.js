@@ -125,7 +125,7 @@ export function initSettings({ onChange, onChangeKey, onWipe }) {
   qs('#st-export')?.addEventListener('click', async () => {
     const convs = await getConversations();
     const payload = {
-      app: 'SHAI',
+      app: 'شیعہ اے آئی (Shia AI)',
       version: '1.0.0',
       exportedAt: new Date().toISOString(),
       conversations: convs,

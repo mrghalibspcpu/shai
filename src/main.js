@@ -1,12 +1,22 @@
 /**
- * SHAI · Shia Hadith AI — application entry
+ * شیعہ اے آئی (Shia AI) — application entry
+ *
+ * Answer pipeline (per question):
+ *   1. retrieve()  — exact locator / pasted matan / bilingual keyword search on the
+ *                    on-device dataset (search.js)
+ *   2. no record?  — answer "not available in the system" locally; no model call
+ *   3. otherwise   — Gemini receives ONLY the retrieved verbatim records and
+ *                    translates / formats them (prompt.js)
+ *   4. citations   — rendered from dataset rows, never from model-written links
  */
 
 import './styles/main.css';
 
 import { buildSystemInstruction } from './lib/prompt.js';
 import { streamGenerate, friendlyError, normaliseKey } from './lib/gemini.js';
-import { extract } from './lib/citations.js';
+import { extract, setAllowedRefIds } from './lib/citations.js';
+import { loadDataset, datasetStatus } from './lib/dataset.js';
+import { retrieve, fallbackRefs } from './lib/search.js';
 import { qs, qsa, on, toast, sleep, openExternal } from './lib/dom.js';
 import {
   getSettings,
@@ -35,9 +45,14 @@ import {
   clearThread,
   scrollToBottom,
   escapeHtml,
+  initScrollGuard,
+  setStreaming,
+  followIfNeeded,
+  resumeFollow,
 } from './ui/chat.js';
 
 const uid = () => Math.random().toString(36).slice(2, 10);
+const APP_NAME = 'شیعہ اے آئی';
 
 /** Must match --urdu-size in src/styles/tokens.css */
 const DEFAULT_FONT_SIZE = 19;
@@ -64,6 +79,23 @@ function applySettings(s = state.settings) {
   else root.style.setProperty('--urdu-size', `${size}px`);
   const name = qs('#model-name');
   if (name) name.textContent = state.settings.model || 'gemini-2.5-flash';
+}
+
+/* ── Local answers (no model call) ───────────────────────────── */
+
+/** Deterministic message for a question the dataset cannot answer. */
+function localAnswerFor(retr) {
+  const st = retr.dataset || datasetStatus();
+  switch (retr.reason) {
+    case 'no-content':
+      return 'وعلیکم السلام! کسی حدیث، آیت، دعا یا فقہی مسئلے کے بارے میں پوچھیں۔ مثال: «نمازِ شب کی فضیلت» یا «کافی جلد 2 باب 17 حدیث 14»۔';
+    case 'dataset-unavailable':
+      return `ڈیٹا بیس لوڈ نہیں ہو سکا، اس لیے کوئی جواب نہیں دیا جا سکتا۔ براہِ کرم ایپ دوبارہ کھولیں۔ (${st.error || 'unknown'})`;
+    case 'locator-not-found':
+      return 'آپ کے دیے گئے حوالے (جلد / کتاب / باب / حدیث) کی روایت شیعہ اے آئی کے ڈیٹا بیس میں موجود نہیں ہے۔\n\n**Narration not available in the system.**\n\nبراہِ کرم نمبر دوبارہ چیک کریں۔';
+    default:
+      return `اس سوال کا جواب شیعہ اے آئی کے مستند ڈیٹا بیس میں **دستیاب نہیں** ہے، اس لیے میں کوئی روایت یا فتویٰ اپنی طرف سے نہیں گھڑ سکتا۔\n\n**Narration not available in the system.**\n\nموجودہ ڈیٹا بیس میں Thaqalayn کی ${st.hadithCount} احادیث اور سیستانی کے ${st.fatwaCount} مسائل ہیں۔ براہِ کرم سوال کے دوسرے الفاظ استعمال کریں (مثلاً «روزہ»، «وضو»، «نمازِ شب»)، یا کسی حدیث کا حوالہ لکھیں جیسے «کافی جلد 2 باب 17 حدیث 14»۔`;
+  }
 }
 
 /** Warm the Nastaleeq face in the background; never block first paint. */
@@ -237,6 +269,21 @@ async function run(question, { retryFrom = null } = {}) {
     await persist();
   }
 
+  // ── 1 · Retrieval on the offline dataset ──
+  const retr = retrieve(question, { depth: state.settings.depth });
+  if (retr.empty) {
+    // Nothing in the dataset → say so, deterministically. The model is not called.
+    const text = localAnswerFor(retr);
+    const localId = `n${Date.now()}`;
+    const { msg: localEl } = addMessage(inner, { role: 'assistant', content: text, id: localId });
+    localEl.dataset.ts = String(Date.now());
+    localEl.dataset.raw = text;
+    conv.messages.push({ role: 'assistant', content: text, ts: Date.now(), refs: [] });
+    await persist();
+    resumeFollow();
+    return;
+  }
+
   const thinking = showThinking(inner);
   const pill = qs('#model-pill');
   pill?.classList.add('is-busy');
@@ -249,13 +296,18 @@ async function run(question, { retryFrom = null } = {}) {
   let raw = '';
   let aiEl = null;
 
+  // Only records retrieval supplied may be cited.
+  setAllowedRefIds(fallbackRefs(retr).map((r) => r.id));
+  setStreaming(true);
+
   try {
     const stream = streamGenerate({
       apiKey: key,
       model: state.settings.model,
-      system: buildSystemInstruction(state.settings),
+      system: buildSystemInstruction(state.settings, retr),
       history,
       message: question,
+      temperature: 0.1,
       signal: state.controller.signal,
     });
 
@@ -271,7 +323,7 @@ async function run(question, { retryFrom = null } = {}) {
       } else {
         updateAiMessage(aiEl, raw);
       }
-      maybeAutoScroll();
+      followIfNeeded();
     }
   } catch (err) {
     thinking.remove();
@@ -285,6 +337,8 @@ async function run(question, { retryFrom = null } = {}) {
     });
     state.busy = false;
     setSendState(false);
+    setStreaming(false);
+    setAllowedRefIds(null);
     pill?.classList.remove('is-busy');
     return;
   }
@@ -299,6 +353,11 @@ async function run(question, { retryFrom = null } = {}) {
       onChangeKey: () => settingsUi?.open(),
     });
   } else {
+    // If the model cited nothing, attach exactly what retrieval found.
+    if (!extract(raw).refs.length) {
+      const refs = fallbackRefs(retr);
+      if (refs.length) raw += `\n\n\`\`\`refs\n${JSON.stringify(refs)}\n\`\`\``;
+    }
     updateAiMessage(aiEl, raw, { done: true });
     addTools(inner, aiEl, {
       onRetry: () => run(question, { retryFrom: aiEl.dataset.ts }),
@@ -311,15 +370,10 @@ async function run(question, { retryFrom = null } = {}) {
   state.busy = false;
   state.controller = null;
   setSendState(false);
+  setStreaming(false);
+  setAllowedRefIds(null);
   pill?.classList.remove('is-busy');
-  scrollToBottom();
-}
-
-function maybeAutoScroll() {
-  const t = qs('#thread');
-  if (!t) return;
-  const dist = t.scrollHeight - t.scrollTop - t.clientHeight;
-  if (dist < 320) t.scrollTop = t.scrollHeight;
+  scrollToBottom(true);
 }
 
 function setSendState(busy) {
@@ -334,6 +388,8 @@ function setSendState(busy) {
 function stop() {
   state.controller?.abort();
   state.busy = false;
+  setStreaming(false);
+  setAllowedRefIds(null);
   setSendState(false);
   qs('#model-pill')?.classList.remove('is-busy');
   toast('روک دیا گیا');
@@ -349,7 +405,7 @@ function exportCurrent() {
   const lines = [
     `# ${conv.title}`,
     '',
-    `_SHAI · ${new Date(conv.updatedAt || Date.now()).toLocaleString()}_`,
+    `_${APP_NAME} · ${new Date(conv.updatedAt || Date.now()).toLocaleString()}_`,
     '',
   ];
   for (const m of conv.messages) {
@@ -359,7 +415,7 @@ function exportCurrent() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `shai-${conv.title.slice(0, 30).replace(/[^\wء-ی]+/g, '-')}.md`;
+  a.download = `shia-ai-${conv.title.slice(0, 30).replace(/[^\wء-ی]+/g, '-')}.md`;
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -381,8 +437,10 @@ async function boot() {
 
   applySettings(state.settings);
 
-  // Splash → app
+  // Load the offline dataset first: history citations resolve against it.
+  const datasetReady = loadDataset();
   await sleep(650);
+  await datasetReady;
   qs('#splash')?.classList.add('is-hidden');
   const app = qs('#app');
   if (app) app.hidden = false;
@@ -487,7 +545,8 @@ async function boot() {
   else renderWelcome(qs('#thread'));
   renderSidebar();
 
-  qs('#build-tag').textContent = `SHAI v1.0.0 · ${state.settings.model}`;
+  initScrollGuard();
+  qs('#build-tag').textContent = `${APP_NAME} v1.1.0 · ${state.settings.model}`;
 
   // Android hardware back button
   try {
@@ -525,11 +584,12 @@ function submit() {
   if (!text || state.busy) return;
   input.value = '';
   input.style.height = 'auto';
+  resumeFollow({ smooth: false }); // a new question always brings the view down
   run(text);
 }
 
 boot().catch((err) => {
-  console.error('[SHAI] boot failed', err);
+  console.error('[Shia AI] boot failed', err);
   qs('#splash')?.classList.add('is-hidden');
   const app = qs('#app');
   if (app) app.hidden = false;

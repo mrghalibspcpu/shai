@@ -1,4 +1,4 @@
-name: Build SHAI Android APK
+name: Build SHIA AI Android APK
 
 on:
   push:
@@ -7,17 +7,25 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      refresh_data:
+        description: 'Re-crawl Thaqalayn + sistani.org (slow; overwrites the committed data index)'
+        type: boolean
+        default: false
 
 jobs:
   data:
-    name: Crawl & commit data index
+    name: Crawl & commit data index (manual only)
+    # Only runs when explicitly requested. The committed index is the source of
+    # truth; a routine build must never overwrite it with a sample crawl.
+    if: github.event_name == 'workflow_dispatch' && inputs.refresh_data
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: arena/256c7a26-shai
+          ref: ${{ github.ref_name }}
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -49,7 +57,7 @@ jobs:
             echo "::notice::data index unchanged"
           else
             git commit -m "chore(data): refresh Thaqalayn + fatawa index [skip ci]"
-            git push origin HEAD:arena/256c7a26-shai
+            git push origin HEAD:${{ github.ref_name }}
             echo "::notice::data index committed"
           fi
 
@@ -95,8 +103,8 @@ jobs:
       - name: Install JS dependencies
         run: npm ci
 
-      - name: Build the offline data index (Thaqalayn + fatawa)
-        run: npm run build:data
+      - name: Validate the committed offline data index
+        run: npm run build:index
 
       - name: Build web bundle
         run: npm run build
@@ -154,17 +162,17 @@ jobs:
       - name: Collect APKs
         run: |
           mkdir -p build
-          cp "$(find android/app/build/outputs/apk/debug   -name '*.apk' | head -1)" build/SHAI-debug.apk
-          cp "$(find android/app/build/outputs/apk/release -name '*.apk' | head -1)" build/SHAI-release.apk
+          cp "$(find android/app/build/outputs/apk/debug   -name '*.apk' | head -1)" build/SHIA-AI-debug.apk
+          cp "$(find android/app/build/outputs/apk/release -name '*.apk' | head -1)" build/SHIA-AI-release.apk
           ls -lh build
-          "${ANDROID_HOME}/build-tools/"*/apksigner verify --print-certs build/SHAI-release.apk | head -20
+          "${ANDROID_HOME}/build-tools/"*/apksigner verify --print-certs build/SHIA-AI-release.apk | head -20
 
       - uses: actions/upload-artifact@v4
         with:
-          name: SHAI-APK
+          name: SHIA-AI-APK
           path: |
-            build/SHAI-debug.apk
-            build/SHAI-release.apk
+            build/SHIA-AI-debug.apk
+            build/SHIA-AI-release.apk
           retention-days: 90
 
       - name: Upload keystore (first run only)
@@ -181,5 +189,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            build/SHAI-debug.apk
-            build/SHAI-release.apk
+            build/SHIA-AI-debug.apk
+            build/SHIA-AI-release.apk

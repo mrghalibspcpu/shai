@@ -1,6 +1,6 @@
 {
-  "name": "shai",
-  "version": "1.0.0",
+  "name": "shia-ai",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "description": "شیعہ اے آئی (Shia AI) — authentic Urdu answers grounded in Thaqalayn hadith data and sistani.org fatawa",
@@ -9,7 +9,7 @@
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
     "fonts": "node scripts/build-fonts.mjs",
-    "build:data": "node scripts/build-hadith-index.mjs && node scripts/build-fatawa-index.mjs",
+    "build:data": "node scripts/build-hadith-index.mjs && node scripts/build-fatawa-index.mjs && node scripts/build-search-index.mjs",
     "build:hadith": "node scripts/build-hadith-index.mjs",
     "build:fatawa": "node scripts/build-fatawa-index.mjs",
     "test": "node scripts/self-test.mjs && node scripts/smoke.mjs",
@@ -20,7 +20,8 @@
     "cap:open": "npx cap open android",
     "apk:debug": "bash scripts/build-apk.sh debug",
     "apk:release": "bash scripts/build-apk.sh release",
-    "apk:ci": "bash scripts/build-apk.sh ci"
+    "apk:ci": "bash scripts/build-apk.sh ci",
+    "build:index": "node scripts/build-search-index.mjs"
   },
   "dependencies": {
     "@capacitor/app": "^7.0.0",
