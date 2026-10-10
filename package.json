@@ -9,7 +9,7 @@
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
     "fonts": "node scripts/build-fonts.mjs",
-    "build:data": "node scripts/build-hadith-index.mjs && node scripts/build-fatawa-index.mjs && node scripts/build-library.mjs",
+    "build:data": "node scripts/build-hadith-index.mjs && node scripts/build-fatawa-index.mjs",
     "build:hadith": "node scripts/build-hadith-index.mjs",
     "build:fatawa": "node scripts/build-fatawa-index.mjs",
     "test": "node scripts/self-test.mjs && node scripts/library-test.mjs && node scripts/smoke.mjs",
