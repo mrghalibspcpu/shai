@@ -1,0 +1,231 @@
+@font-face {
+  font-family: 'JameelNoori';
+  src: url('fonts/jameel-noori-nastaleeq.woff2') format('woff2');
+  font-display: swap;
+}
+
+:root {
+  --bg: #f6f4ec;
+  --card: #ffffff;
+  --text: #1c1f1d;
+  --muted: #6a7069;
+  --brand: #0b5e45;
+  --brand-2: #0f7a5a;
+  --gold: #b8862b;
+  --border: #e4dfcf;
+  --fs: 22px;
+  --tab-h: 64px;
+  --radius: 16px;
+}
+
+[data-theme="dark"] {
+  --bg: #0e1613;
+  --card: #15201c;
+  --text: #ece8d8;
+  --muted: #9fb3a9;
+  --brand: #46c99a;
+  --brand-2: #2fa77c;
+  --gold: #e4b869;
+  --border: #25352f;
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'JameelNoori', 'Noto Naskh Arabic', 'Segoe UI', Tahoma, sans-serif;
+  font-size: 17px;
+  direction: rtl;
+  -webkit-text-size-adjust: 100%;
+  min-height: 100vh;
+  padding-bottom: calc(var(--tab-h) + env(safe-area-inset-bottom) + 12px);
+}
+
+a { color: var(--brand); text-decoration: none; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+
+/* ---------- top bar ---------- */
+.topbar {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: calc(env(safe-area-inset-top) + 10px) 16px 10px;
+  background: linear-gradient(135deg, var(--brand), var(--brand-2));
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(0,0,0,.15);
+}
+.brand { display: flex; align-items: center; gap: 10px; color: #fff; }
+.brand-mark {
+  width: 38px; height: 38px; border-radius: 12px;
+  display: grid; place-items: center;
+  background: rgba(255,255,255,.15); font-size: 20px; color: #ffe39a;
+}
+.brand-text { display: flex; flex-direction: column; line-height: 1.1; }
+.brand-text strong { font-family: system-ui, sans-serif; letter-spacing: 1px; font-size: 18px; direction: ltr; text-align: right; }
+.brand-text small { font-size: 14px; opacity: .9; }
+.icon-btn {
+  width: 40px; height: 40px; border-radius: 50%; border: 0;
+  background: rgba(255,255,255,.15); color: #fff; font-size: 18px;
+}
+
+/* ---------- layout ---------- */
+.container { max-width: 760px; margin: 0 auto; padding: 16px 14px 24px; }
+.loader { text-align: center; color: var(--muted); padding: 48px 0; }
+.muted { color: var(--muted); font-size: .9em; }
+
+.hero {
+  background: linear-gradient(135deg, var(--brand), var(--brand-2));
+  color: #fff; border-radius: 22px; padding: 22px 18px; margin-bottom: 18px;
+  box-shadow: 0 8px 24px rgba(11,94,69,.25);
+}
+.hero h1 { margin: 0 0 6px; font-size: 1.6em; }
+.hero p { margin: 0 0 14px; opacity: .92; font-size: .95em; line-height: 1.8; }
+
+.search-form { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 14px; }
+.search-form input[type="search"], .search-form input[type="text"] {
+  flex: 1 1 200px; min-width: 0; padding: 12px 14px; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--card); color: var(--text);
+  font-size: 17px;
+}
+.search-form select {
+  padding: 10px 10px; border-radius: 12px; border: 1px solid var(--border);
+  background: var(--card); color: var(--text);
+}
+.search-form button, .btn {
+  padding: 11px 18px; border-radius: 12px; border: 0;
+  background: var(--gold); color: #1a1a1a; font-weight: 600;
+}
+.hero .search-form input { background: rgba(255,255,255,.96); color: #1c1f1d; border-color: transparent; }
+
+.page-head { margin: 4px 0 14px; }
+.page-head h1 { margin: 0 0 4px; font-size: 1.5em; }
+.page-head h2 { margin: 0 0 4px; font-size: 1.2em; color: var(--muted); font-weight: 600; }
+.ar-title { font-family: 'Noto Naskh Arabic', 'Amiri', 'Scheherazade New', serif; color: var(--brand); font-size: 1.5em; line-height: 1.8; }
+
+.crumb { font-size: .9em; color: var(--muted); margin-bottom: 8px; }
+.crumb a { color: var(--brand); }
+
+.filter {
+  width: 100%; padding: 12px 14px; margin-bottom: 12px; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--card); color: var(--text);
+}
+
+.card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px; margin-bottom: 14px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+}
+
+/* ---------- books ---------- */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.book { display: block; color: var(--text); border-left: 4px solid var(--gold); margin: 0; transition: transform .1s; }
+.book:active { transform: scale(.98); }
+.book-ar { font-family: 'Noto Naskh Arabic', 'Amiri', serif; font-size: 1.3em; color: var(--brand); line-height: 1.8; }
+.book-ur { font-size: 1.05em; margin: 2px 0 6px; font-weight: 600; }
+.book .meta { color: var(--muted); font-size: .85em; }
+
+.notice {
+  background: #fff7e0; color: #5b4300; border: 1px solid #e9d28f;
+  border-radius: 14px; padding: 12px 14px; margin-bottom: 14px; font-size: .95em; line-height: 1.9;
+}
+[data-theme="dark"] .notice { background: #2a2412; color: #f0dca4; border-color: #5a4b1d; }
+.notice button { margin-top: 6px; padding: 6px 14px; border-radius: 10px; border: 0; background: var(--brand); color: #fff; }
+
+/* ---------- chapters ---------- */
+.chapters { list-style: none; margin: 0; padding: 0; }
+.chapters li { border-bottom: 1px solid var(--border); }
+.chapters a { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 13px 4px; color: var(--text); }
+.chapters .ch-title { line-height: 1.8; }
+.chapters small { color: var(--muted); white-space: nowrap; font-size: .8em; }
+
+/* ---------- hadith cards ---------- */
+.hadith .hd { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+.num {
+  min-width: 34px; height: 30px; padding: 0 8px; border-radius: 10px;
+  display: inline-grid; place-items: center; background: var(--brand); color: #fff; font-size: .9em;
+}
+.bk { font-size: .9em; color: var(--brand); font-weight: 600; }
+.ref { font-size: .78em; color: var(--muted); direction: ltr; font-family: system-ui, sans-serif; }
+.hadith .hd .icon {
+  margin-inline-start: auto; width: 36px; height: 36px; border-radius: 50%;
+  border: 1px solid var(--border); background: transparent; color: var(--gold); font-size: 18px;
+}
+.hadith .hd .icon.on { background: var(--gold); color: #fff; border-color: var(--gold); }
+
+.ar {
+  font-family: 'Noto Naskh Arabic', 'Amiri', 'Scheherazade New', 'Traditional Arabic', serif;
+  font-size: calc(var(--fs) * .92); line-height: 2.2; margin: 6px 0 10px;
+  white-space: pre-line; color: var(--text); direction: rtl;
+  background: rgba(11,94,69,.05); border-radius: 12px; padding: 10px 12px;
+}
+.ur {
+  font-family: 'JameelNoori', 'Noto Naskh Arabic', serif;
+  font-size: var(--fs); line-height: 2.1; margin: 6px 0; white-space: pre-line;
+}
+.sum { margin-top: 8px; border-top: 1px dashed var(--border); padding-top: 8px; }
+.sum summary { cursor: pointer; color: var(--gold); font-weight: 600; }
+.sum .ur { font-size: calc(var(--fs) * .85); color: var(--muted); }
+
+.hadith .ft {
+  display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+  margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); font-size: .9em;
+}
+.hadith .ft a { margin-inline-end: auto; }
+.hadith .ft button {
+  padding: 6px 12px; border-radius: 10px; border: 1px solid var(--border); background: transparent; color: var(--brand);
+}
+
+.more {
+  display: block; width: 100%; padding: 13px; border-radius: 14px; border: 1px dashed var(--brand);
+  background: transparent; color: var(--brand); font-weight: 600; margin: 4px 0 12px;
+}
+.status { color: var(--muted); padding: 8px 2px 12px; }
+.empty { text-align: center; color: var(--muted); padding: 40px 10px; }
+.error { border-color: #d98b8b; color: #8a2d2d; }
+[data-theme="dark"] .error { color: #f2a4a4; }
+.error button { margin-top: 8px; padding: 8px 14px; border-radius: 10px; border: 0; background: var(--brand); color: #fff; }
+
+.toast {
+  position: fixed; bottom: calc(var(--tab-h) + 16px + env(safe-area-inset-bottom)); left: 50%;
+  transform: translateX(-50%); background: #1c1f1d; color: #fff; padding: 10px 16px;
+  border-radius: 12px; font-size: .95em; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 30;
+}
+.toast.show { opacity: 1; }
+
+/* ---------- about ---------- */
+.setting { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.setting:last-child { border-bottom: 0; }
+.setting input[type="range"] { width: 55%; accent-color: var(--brand); }
+.card h3 { margin: 0 0 8px; color: var(--brand); }
+.card p { line-height: 2; margin: 0 0 8px; }
+.card ol, .card ul { line-height: 2; padding-inline-start: 22px; margin: 0; }
+.ltr { direction: ltr; text-align: left; font-family: system-ui, sans-serif; }
+
+/* ---------- bottom tabs ---------- */
+.tabbar {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 20;
+  height: calc(var(--tab-h) + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  background: var(--card); border-top: 1px solid var(--border);
+  box-shadow: 0 -2px 10px rgba(0,0,0,.05);
+}
+.tabbar a {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  color: var(--muted); font-size: 13px;
+}
+.tabbar a .ti { font-size: 20px; line-height: 1; }
+.tabbar a.active { color: var(--brand); font-weight: 700; }
+.tabbar a.active .ti { transform: scale(1.1); }
+
+@media (min-width: 760px) {
+  .grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}

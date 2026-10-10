@@ -1,0 +1,113 @@
+{
+ "version": 1,
+ "books": [
+  {
+   "id": "al-kafi",
+   "title": {
+    "ar": "الكافي",
+    "en": "Al-Kafi",
+    "ur": "الکافی"
+   },
+   "hadith_count": 16254,
+   "chapter_count": 2323,
+   "file": "data/al-kafi.json.gz",
+   "size_kb": 7906
+  },
+  {
+   "id": "man-la-yahduruhu-al-faqih",
+   "title": {
+    "ar": "من لا يحضره الفقيه",
+    "en": "Man La Yahduruhu al-Faqih",
+    "ur": "من لا یحضرہ الفقیہ"
+   },
+   "hadith_count": 6382,
+   "chapter_count": 1046,
+   "file": "data/man-la-yahduruhu-al-faqih.json.gz",
+   "size_kb": 2349
+  },
+  {
+   "id": "tahdhib-al-ahkam",
+   "title": {
+    "ar": "تهذيب الأحكام",
+    "en": "Tahdhib al-Ahkam",
+    "ur": "تہذیب الاحکام"
+   },
+   "hadith_count": 13201,
+   "chapter_count": 350,
+   "file": "data/tahdhib-al-ahkam.json.gz",
+   "size_kb": 6245
+  },
+  {
+   "id": "nahj-al-balagha",
+   "title": {
+    "ar": "نهج البلاغة",
+    "en": "Nahj al-Balagha",
+    "ur": "نہج البلاغہ"
+   },
+   "hadith_count": 2260,
+   "chapter_count": 800,
+   "file": "data/nahj-al-balagha.json.gz",
+   "size_kb": 999
+  },
+  {
+   "id": "al-khisal",
+   "title": {
+    "ar": "الخصال",
+    "en": "Al-Khisal",
+    "ur": "الخصال"
+   },
+   "hadith_count": 1282,
+   "chapter_count": 909,
+   "file": "data/al-khisal.json.gz",
+   "size_kb": 806
+  },
+  {
+   "id": "uyun-akhbar-al-rida",
+   "title": {
+    "ar": "عيون أخبار الرضا",
+    "en": "Uyun Akhbar al-Rida",
+    "ur": "عیون اخبار الرضا"
+   },
+   "hadith_count": 954,
+   "chapter_count": 70,
+   "file": "data/uyun-akhbar-al-rida.json.gz",
+   "size_kb": 612
+  },
+  {
+   "id": "kamal-al-din",
+   "title": {
+    "ar": "كمال الدين وتمام النعمة",
+    "en": "Kamal al-Din wa Tamam al-Ni'ma",
+    "ur": "کمال الدین و تمام النعمہ"
+   },
+   "hadith_count": 659,
+   "chapter_count": 1,
+   "file": "data/kamal-al-din.json.gz",
+   "size_kb": 127
+  },
+  {
+   "id": "al-amali-saduq",
+   "title": {
+    "ar": "الأمالي (الصدوق)",
+    "en": "Al-Amali (al-Saduq)",
+    "ur": "الأمالی (شیخ صدوق)"
+   },
+   "hadith_count": 1082,
+   "chapter_count": 97,
+   "file": "data/al-amali-saduq.json.gz",
+   "size_kb": 926
+  },
+  {
+   "id": "al-tawhid",
+   "title": {
+    "ar": "التوحيد",
+    "en": "Al-Tawhid",
+    "ur": "کتاب التوحید"
+   },
+   "hadith_count": 575,
+   "chapter_count": 68,
+   "file": "data/al-tawhid.json.gz",
+   "size_kb": 447
+  }
+ ]
+}

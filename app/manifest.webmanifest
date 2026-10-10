@@ -1,0 +1,18 @@
+{
+  "name": "SHAI - شیعہ حدیث AI",
+  "short_name": "SHAI",
+  "description": "معتبر شیعہ کتب کی احادیث، اردو اور عربی متن کے ساتھ۔ آف لائن بھی کام کرتی ہے۔",
+  "lang": "ur",
+  "dir": "rtl",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f4ec",
+  "theme_color": "#0b5e45",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
