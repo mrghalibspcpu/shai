@@ -1,0 +1,34 @@
+{
+  "_comment": "SAMPLE ONLY. Placeholder text, not real hadith. Replace with your own data. Mean is a placeholder, not a translation.",
+  "chapters": [
+    {
+      "title": "SAMPLE CHAPTER 1",
+      "sections": [
+        {
+          "title": "SAMPLE SECTION 1.1",
+          "riwayat": [
+            {"txt": "نص تجريبي ١ (عربي)", "mean": "[اردو ترجمہ یہاں شامل کریں ۱]", "hadith_no": "1", "grade": "TEST"},
+            {"txt": "نص تجريبي ٢ (عربي)", "mean": "[اردو ترجمہ یہاں شامل کریں ۲]", "hadith_no": "2", "grade": null}
+          ]
+        },
+        {
+          "title": "SAMPLE SECTION 1.2",
+          "riwayat": [
+            {"txt": "نص تجريبي ٣ (عربي)", "mean": "[اردو ترجمہ یہاں شامل کریں ۳]", "hadith_no": "3"}
+          ]
+        }
+      ]
+    },
+    {
+      "title": "SAMPLE CHAPTER 2",
+      "sections": [
+        {
+          "title": "SAMPLE SECTION 2.1",
+          "riwayat": [
+            {"txt": "نص تجريبي ٤ (عربي)", "mean": "[اردو ترجمہ یہاں شامل کریں ٤]", "hadith_no": "4", "grade": "TEST"}
+          ]
+        }
+      ]
+    }
+  ]
+}
